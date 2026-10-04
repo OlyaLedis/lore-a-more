@@ -1,7 +1,8 @@
-# Olga — Stories
+# StoryPlace
 
 A place where people share stories for others to read. Writers sign in and submit a story; it stays
-hidden until Olga approves it, then it appears in the public feed.
+hidden until a moderator approves it, then it appears in the public feed. Writers can edit or
+delete their own stories; edits to a published story are reviewed before they replace it.
 
 - **Frontend:** React + Vite + TypeScript + Tailwind CSS (`src/`)
 - **Backend:** [Convex](https://convex.dev) — database, server functions, and auth (`convex/`)
@@ -17,7 +18,7 @@ with Claude Code. Set aside about 30 minutes the first time.
 1. [Before you start (Bakhtiar)](#1-before-you-start-bakhtiar)
 2. [Install the tools](#2-install-the-tools)
 3. [Get the code](#3-get-the-code)
-4. [Set up Convex](#4-set-up-convex)
+4. [Set up Convex](#4-set-up-convex) (including the place-search key, 4c)
 5. [Run the app](#5-run-the-app)
 6. [Make yourself the reviewer](#6-make-yourself-the-reviewer)
 7. [Set up Claude Code](#7-set-up-claude-code)
@@ -150,6 +151,28 @@ You should see `JWKS`, `JWT_PRIVATE_KEY`, and `SITE_URL`.
 > Keep the `NAME=value` form in quotes exactly as shown. Writing `env set JWT_PRIVATE_KEY "..."`
 > fails, because the key starts with `-----BEGIN` and the CLI mistakes it for an option.
 
+### 4c. Add the place-search key
+
+The **Write a story** form lets writers search for the place their story is connected to. The search
+uses [MapTiler](https://www.maptiler.com/) and needs a free API key. Without one the app still works,
+but writers have to mark places by clicking a map.
+
+1. Sign up at [cloud.maptiler.com](https://cloud.maptiler.com/) and open **API keys**. Copy the default
+   key, or create a new one.
+2. Under the key's **Allowed HTTP origins**, add `localhost:5173` and the address where the site is
+   published. This key is sent from people's browsers, so it isn't secret. The origin list is what
+   stops other websites from using it.
+3. Add this line to `.env.local` in the `olga` folder, below the lines Convex wrote:
+
+   ```sh
+   VITE_MAPTILER_KEY=your-key-here
+   ```
+
+4. Restart `npm run dev`. Vite only reads `.env.local` when it starts.
+
+For the published site, set `VITE_MAPTILER_KEY` in the hosting provider's build settings too, since
+`.env.local` never leaves your computer.
+
 ---
 
 ## 5. Run the app
@@ -275,6 +298,7 @@ Before sharing your work, check that it builds and passes lint:
 npm run build            # type-checks the frontend and builds it
 npx tsc --noEmit -p convex   # type-checks the backend
 npm run lint
+npm test                 # backend tests (convex/*.test.ts)
 ```
 
 Then commit and push. Working on a branch and opening a pull request lets Bakhtiar review first:
@@ -297,20 +321,29 @@ Claude Code can do all of this for you. Just ask it to "commit this and open a p
 
 | URL | Page | Who can see it |
 | --- | --- | --- |
-| `/` | Feed of approved stories, newest first | Everyone |
-| `/story/:id` | A single story | Everyone if approved; otherwise only its writer and admins |
+| `/` | **Home**: Stories Near You, Top Picks, Places You've Been, Recently Played, Seasonal Stories, and a shelf per category | Everyone (personal sections need sign-in) |
+| `/new` | **New**: every published story, newest first | Everyone |
+| `/library` | **Library**: saved stories, Recently Played, Places You've Been | Signed-in users (private to each reader) |
+| `/search` | **Search** by title, place, category, theme, or pen name, with category / age / theme filters | Everyone |
+| `/story/:id` | A single story, with Save, Mark as visited, and (for admins) Add to Seasonal Stories | Everyone if approved; otherwise only its writer and admins |
+| `/map` | Approved stories that have a location, as pins on a map | Everyone |
 | `/signin` | Sign in / sign up | Everyone |
-| `/new` | Write a story | Signed-in users |
-| `/mine` | Your submissions and their status | Signed-in users |
-| `/review` | Approve or reject pending stories | Admins |
+| `/account` | Opened from the initials button: reader's age for Top Picks, links, sign out | Signed-in users |
+| `/write` | **Add a Story** | Signed-in users |
+| `/story/:id/edit` | Edit your story (the same form as writing one) | The story's writer |
+| `/mine` | Your submissions, their status, and Edit / Delete | Signed-in users |
+| `/review` | Approve or reject new stories and edits to published stories | Admins |
 
 ### Backend (`convex/`)
 
 | File | Contents |
 | --- | --- |
-| `schema.ts` | Tables: `stories` (title, body, pen name, writer, status) and `users` (with an `isAdmin` flag), plus Convex Auth's own tables |
-| `stories.ts` | `list` (public feed), `get`, `mine`, `submit`, `pending` (review queue), `review` (approve/reject) |
-| `users.ts` | `me` (current user), `setAdmin` (command-line only), and the `requireUser` / `requireAdmin` checks |
+| `schema.ts` | Tables: `stories` (title, body, pen name, writer, status, optional location, category, age, themes, source) and `users` (with an `isAdmin` flag), plus Convex Auth's own tables. `storyRevisions` holds edits to published stories while they wait for review. `savedStories`, `storyViews`, `placeVisits` hold each reader's private library; `collectionEntries` holds Seasonal Stories |
+| `taxonomy.ts` | The categories, ages, themes, and source kinds, shared with the frontend |
+| `discover.ts` | Home sections (`home`, `nearby`, `topPicks`), `search`, and the Seasonal Stories collection |
+| `library.ts` | A reader's saved stories, Recently Played, and Places You've Been |
+| `stories.ts` | `list` (public feed), `mapped` (stories for the map), `get`, `mine`, `editable`, `submit`, `update`, `remove`, `pending` / `review` (new stories), `pendingRevisions` / `reviewRevision` (edits) |
+| `users.ts` | `me` (current user), `setAgeRange`, `setAdmin` (command-line only), and the `requireUser` / `requireAdmin` checks |
 | `auth.ts`, `auth.config.ts`, `http.ts` | Convex Auth wiring. Rarely needs changing. |
 | `_generated/` | Created automatically by `npx convex dev`. Don't edit it. |
 
@@ -337,6 +370,14 @@ least 8 characters.
 **The page is blank or says it can't connect.**
 Make sure `npx convex dev` is running and that `.env.local` exists in the `olga` folder. If it's
 missing, stop `npx convex dev` and start it again to reconnect to the project.
+
+**The place search box is greyed out and says search isn't set up.**
+`VITE_MAPTILER_KEY` is missing from `.env.local`, or `npm run dev` hasn't been restarted since you
+added it. See step 4c.
+
+**Place search says it isn't working right now.**
+Open the browser console. A `403` error means MapTiler rejected the key, usually because the site's
+address isn't in the key's allowed origins.
 
 **`npx convex run users:setAdmin` says "No account with email …".**
 Sign up in the app first, using exactly the same email address.

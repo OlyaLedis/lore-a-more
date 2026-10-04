@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
-import { internalMutation, query, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
+import { ageRange } from "./taxonomy";
 
 export async function requireUser(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx);
@@ -23,7 +24,16 @@ export const me = query({
     if (!userId) return null;
     const user = await ctx.db.get(userId);
     if (!user) return null;
-    return { _id: user._id, email: user.email, isAdmin: user.isAdmin === true };
+    return { _id: user._id, email: user.email, isAdmin: user.isAdmin === true, ageRange: user.ageRange ?? null };
+  },
+});
+
+// The reader's age range for Top Picks, or null to show all ages.
+export const setAgeRange = mutation({
+  args: { ageRange: v.union(ageRange, v.null()) },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    await ctx.db.patch(user._id, { ageRange: args.ageRange ?? undefined });
   },
 });
 

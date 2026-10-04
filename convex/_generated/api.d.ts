@@ -9,8 +9,13 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as discover from "../discover.js";
+import type * as geo from "../geo.js";
 import type * as http from "../http.js";
+import type * as library from "../library.js";
 import type * as stories from "../stories.js";
+import type * as storyCards from "../storyCards.js";
+import type * as taxonomy from "../taxonomy.js";
 import type * as users from "../users.js";
 
 import type {
@@ -21,8 +26,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  discover: typeof discover;
+  geo: typeof geo;
   http: typeof http;
+  library: typeof library;
   stories: typeof stories;
+  storyCards: typeof storyCards;
+  taxonomy: typeof taxonomy;
   users: typeof users;
 }>;
 
