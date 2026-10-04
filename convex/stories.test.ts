@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { setupUsers } from "./test.setup";
+import { oneScene, setupUsers } from "./test.setup";
 
 const story = {
   title: "The mill",
-  body: "Once upon a time.",
+  scenes: oneScene("Once upon a time."),
+  cover: { kind: "colors" as const },
   category: "folktale" as const,
   ageRange: "6+" as const,
   themes: [],
@@ -14,7 +15,7 @@ const story = {
 const edited = {
   ...story,
   title: "The old mill",
-  body: "Once upon a time, by the river.",
+  scenes: oneScene("Once upon a time, by the river."),
   ageRange: "8+" as const,
   themes: ["forest" as const],
   location: { lat: 49.84, lng: 24.03, place: "Lviv, Ukraine", precision: "area" as const },
@@ -208,5 +209,54 @@ describe("approval lifecycle", () => {
     await expect(admin.mutation(api.stories.reviewRevision, { id: revisionId, decision: "approved" })).rejects.toThrow(
       "withdrawn",
     );
+  });
+});
+
+describe("locations chosen on the map", () => {
+  // Su Sterru isn't in MapTiler's index, so the author places the pin and names it.
+  const suSterru = { lat: 40.0779, lng: 9.6697, place: "Su Sterru, Golgo Plateau", precision: "exact" as const };
+
+  test("a custom name and hand-placed pin survive submission, approval, and publication", async () => {
+    const { t, author, admin } = await setup();
+    const id = await author.mutation(api.stories.submit, { ...story, location: suSterru });
+
+    expect((await admin.query(api.stories.pending, page)).page[0].location).toEqual(suSterru);
+    await admin.mutation(api.stories.review, { id, decision: "approved" });
+
+    expect((await t.query(api.stories.get, { id }))?.location).toEqual(suSterru);
+    const [pin] = await t.query(api.stories.mapped, {});
+    expect(pin.location).toEqual(suSterru);
+  });
+
+  test("editing the name, pin, and precision goes through re-approval and is then published", async () => {
+    const { t, author, admin } = await setup();
+    const id = await author.mutation(api.stories.submit, { ...story, location: suSterru });
+    await admin.mutation(api.stories.review, { id, decision: "approved" });
+
+    const plateau = { lat: 40.08, lng: 9.665, place: "Golgo Plateau, Baunei", precision: "area" as const };
+    await author.mutation(api.stories.update, { id, ...story, location: plateau });
+
+    // The edit form shows the new location; readers keep the published one until approval.
+    expect((await author.query(api.stories.editable, { id }))?.location).toEqual(plateau);
+    expect((await t.query(api.stories.get, { id }))?.location).toEqual(suSterru);
+
+    const [revision] = (await admin.query(api.stories.pendingRevisions, page)).page;
+    expect(revision.location).toEqual(plateau);
+    await admin.mutation(api.stories.reviewRevision, { id: revision._id, decision: "approved" });
+    expect((await t.query(api.stories.get, { id }))?.location).toEqual(plateau);
+  });
+
+  test("a pin without a name is kept, and blank names are dropped", async () => {
+    const { t, author, admin } = await setup();
+    const id = await author.mutation(api.stories.submit, {
+      ...story,
+      location: { lat: 40.0779, lng: 9.6697, place: "   ", precision: "uncertain" },
+    });
+    await admin.mutation(api.stories.review, { id, decision: "approved" });
+    expect((await t.query(api.stories.get, { id }))?.location).toEqual({
+      lat: 40.0779,
+      lng: 9.6697,
+      precision: "uncertain",
+    });
   });
 });

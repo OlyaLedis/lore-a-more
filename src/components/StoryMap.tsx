@@ -62,59 +62,55 @@ export function BaseMap({
   )
 }
 
-// Map for the submit form. With no value it shows the world (the manual fallback); otherwise it
-// centres on the chosen place. When `onPick` is set, clicking the map moves the pin.
+// Where the form's map should look: a chosen place, or (before a pin exists) a town the author
+// jumped to. The map re-frames only when `key` changes, never when the pin is nudged.
+export type MapFocus = {
+  key: string
+  center: LatLng
+  bbox?: [number, number, number, number]
+  zoom: number
+}
+
+// Map for the submit form. With no pin and no focus it shows the world. When `onPick` is set,
+// clicking the map places or moves the pin.
 export function LocationMap({
   value,
   precision,
-  bbox,
-  viewKey,
+  focus,
   onPick,
   className = 'h-56',
 }: {
   value: LatLng | null
   precision?: Precision
-  bbox?: [number, number, number, number]
-  viewKey?: string
+  focus?: MapFocus | null
   onPick?: (value: LatLng) => void
   className?: string
 }) {
   return (
     <BaseMap
-      center={value ?? [20, 0]}
-      zoom={value ? zoomFor(precision) : 2}
+      center={focus?.center ?? value ?? [20, 0]}
+      zoom={focus?.zoom ?? (value ? zoomFor(precision) : 2)}
       className={`${className} ${onPick ? 'cursor-crosshair' : ''}`}
     >
-      {value && <Recenter viewKey={viewKey} center={value} bbox={bbox} precision={precision} />}
+      {focus && <Recenter focus={focus} />}
       {onPick && <ClickToPick onPick={onPick} />}
       {value && <StoryPin center={value} precision={precision} />}
     </BaseMap>
   )
 }
 
-// Re-frames the map only when a different place is chosen, not when the pin is nudged.
-function Recenter({
-  viewKey,
-  center,
-  bbox,
-  precision,
-}: {
-  viewKey?: string
-  center: LatLng
-  bbox?: [number, number, number, number]
-  precision?: Precision
-}) {
+function Recenter({ focus }: { focus: MapFocus }) {
   const map = useMap()
   useEffect(() => {
-    if (bbox) {
-      const [w, s, e, n] = bbox
+    if (focus.bbox) {
+      const [w, s, e, n] = focus.bbox
       map.fitBounds([[s, w], [n, e]], { maxZoom: 14, padding: [16, 16] })
     } else {
-      map.setView(center, zoomFor(precision))
+      map.setView(focus.center, focus.zoom)
     }
-    // Deliberately keyed on viewKey only.
+    // Deliberately keyed on focus.key only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewKey])
+  }, [focus.key])
   return null
 }
 

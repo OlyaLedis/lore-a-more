@@ -1,16 +1,17 @@
-import { useConvexAuth, useMutation, useQuery } from 'convex/react'
-import { useEffect, useRef } from 'react'
+import { useQuery } from 'convex/react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
+import { Lightbox, type Picture } from '../components/Lightbox'
 import { ReaderActions, SeasonalToggle } from '../components/ReaderActions'
 import { StoryTags } from '../components/StoryCard'
 import { RevisionBadge, StatusBadge } from '../components/StatusBadge'
 import { StoryActions } from '../components/StoryActions'
 import { BaseMap, StoryPin } from '../components/StoryMap'
 import { byline, formatDate } from '../format'
-import { useHere } from '../here'
 import { precisionNote, zoomFor } from '../location'
+import { useRecordView } from '../useRecordView'
 
 export default function StoryPage() {
   const { id = '' } = useParams()
@@ -18,6 +19,7 @@ export default function StoryPage() {
   // Non-null only for the story's author.
   const mine = useQuery(api.stories.editable, { id })
   const navigate = useNavigate()
+  const [enlarged, setEnlarged] = useState<Picture | null>(null)
   useRecordView(story)
 
   if (story === undefined) return <p className="text-stone-500">Loading…</p>
@@ -74,15 +76,50 @@ export default function StoryPage() {
       <div className="mt-4">
         <StoryTags story={story} />
       </div>
+      <Link
+        to={`/story/${story._id}/read`}
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-stone-900 px-6 py-3 text-lg font-semibold text-white hover:bg-stone-700"
+      >
+        <span aria-hidden>▶</span> Read together
+      </Link>
+      <p className="mt-1 text-sm text-stone-500">Large text with gentle scrolling, for reading aloud.</p>
       {story.status === 'approved' && (
         <div className="mt-5 flex flex-wrap items-start gap-2">
           <ReaderActions storyId={story._id} hasPlace={story.location !== undefined} />
           <SeasonalToggle storyId={story._id} />
         </div>
       )}
-      <div className="prose prose-stone prose-lg mt-8 max-w-none whitespace-pre-wrap font-serif">
-        {story.body}
-      </div>
+      {story.scenes.map((scene, i) => (
+        <section key={scene.id} aria-label={story.scenes.length > 1 ? `Scene ${i + 1}` : undefined} className="mt-8">
+          {i > 0 && (
+            <div aria-hidden className="mb-8 text-center text-stone-400">
+              ✦
+            </div>
+          )}
+          {scene.text && (
+            <div className="prose prose-stone prose-lg max-w-none whitespace-pre-wrap font-serif">{scene.text}</div>
+          )}
+          {scene.illustrations.map(
+            (ill) =>
+              ill.url && (
+                <figure key={ill.storageId} className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setEnlarged({ url: ill.url!, alt: ill.alt, credit: ill.credit })}
+                    aria-label={`View larger: ${ill.alt}`}
+                    className="block w-full overflow-hidden rounded-2xl"
+                  >
+                    <img src={ill.url} alt={ill.alt} className="mx-auto max-h-[28rem] w-auto" />
+                  </button>
+                  {ill.credit && (
+                    <figcaption className="mt-2 text-sm text-stone-500">Illustration: {ill.credit}</figcaption>
+                  )}
+                </figure>
+              ),
+          )}
+        </section>
+      ))}
+      <Lightbox picture={enlarged} onClose={() => setEnlarged(null)} />
       <SourceNote source={story.source} />
       {story.location && (
         <div className="mt-10">
@@ -112,21 +149,4 @@ function SourceNote({ source }: { source: Doc<'stories'>['source'] }) {
     text = `Based on: ${source.detail}. This is the author's version, not a quotation of the source.`
   }
   return <p className="mt-8 border-l-2 border-stone-300 pl-4 text-sm text-stone-600">{text}</p>
-}
-
-// Adds the story to the reader's Recently Played once per visit. If they've shared their location,
-// it's sent along so opening a story at its place counts toward Places You've Been.
-function useRecordView(story: Doc<'stories'> | null | undefined) {
-  const { isAuthenticated } = useConvexAuth()
-  const recordView = useMutation(api.library.recordView)
-  const here = useHere()
-  const recorded = useRef<string | null>(null)
-  const settled = here.status !== 'checking' && here.status !== 'locating'
-
-  useEffect(() => {
-    if (!story || story.status !== 'approved' || !isAuthenticated || !settled) return
-    if (recorded.current === story._id) return
-    recorded.current = story._id
-    void recordView({ storyId: story._id, here: here.position ?? undefined })
-  }, [story, isAuthenticated, settled, here.position, recordView])
 }

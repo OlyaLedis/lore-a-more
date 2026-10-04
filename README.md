@@ -322,14 +322,15 @@ Claude Code can do all of this for you. Just ask it to "commit this and open a p
 | URL | Page | Who can see it |
 | --- | --- | --- |
 | `/` | **Home**: Stories Near You, Top Picks, Places You've Been, Recently Played, Seasonal Stories, and a shelf per category | Everyone (personal sections need sign-in) |
-| `/new` | **New**: every published story, newest first | Everyone |
+| `/new` | **New stories**: every published story, newest first (linked from Home) | Everyone |
 | `/library` | **Library**: saved stories, Recently Played, Places You've Been | Signed-in users (private to each reader) |
 | `/search` | **Search** by title, place, category, theme, or pen name, with category / age / theme filters | Everyone |
+| `/story/:id/read` | **Reading mode**: full-screen large text with optional slow scrolling that stops at each picture; remembers your place | Same as the story |
 | `/story/:id` | A single story, with Save, Mark as visited, and (for admins) Add to Seasonal Stories | Everyone if approved; otherwise only its writer and admins |
-| `/map` | Approved stories that have a location, as pins on a map | Everyone |
+| `/map` | **Map** tab: approved stories that have a location, as pins; tap one to open the story | Everyone |
 | `/signin` | Sign in / sign up | Everyone |
 | `/account` | Opened from the initials button: reader's age for Top Picks, links, sign out | Signed-in users |
-| `/write` | **Add a Story** | Signed-in users |
+| `/write` | **Add a Story**: write in scenes, add pictures with descriptions and credits, and preview reading mode | Signed-in users |
 | `/story/:id/edit` | Edit your story (the same form as writing one) | The story's writer |
 | `/mine` | Your submissions, their status, and Edit / Delete | Signed-in users |
 | `/review` | Approve or reject new stories and edits to published stories | Admins |
@@ -339,6 +340,7 @@ Claude Code can do all of this for you. Just ask it to "commit this and open a p
 | File | Contents |
 | --- | --- |
 | `schema.ts` | Tables: `stories` (title, body, pen name, writer, status, optional location, category, age, themes, source) and `users` (with an `isAdmin` flag), plus Convex Auth's own tables. `storyRevisions` holds edits to published stories while they wait for review. `savedStories`, `storyViews`, `placeVisits` hold each reader's private library; `collectionEntries` holds Seasonal Stories |
+| `scenes.ts` | Story scenes and pictures: validation, reading old one-text stories as one scene, picture URLs and cleanup |
 | `taxonomy.ts` | The categories, ages, themes, and source kinds, shared with the frontend |
 | `discover.ts` | Home sections (`home`, `nearby`, `topPicks`), `search`, and the Seasonal Stories collection |
 | `library.ts` | A reader's saved stories, Recently Played, and Places You've Been |

@@ -4,7 +4,15 @@ import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id, TableNames } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { isValidLatLng } from "./geo";
-import { locationPrecision, storyLocation } from "./schema";
+import {
+  bodyOf,
+  cleanScenes,
+  deleteUnusedFiles,
+  scenesOf,
+  withImageUrls,
+} from "./scenes";
+import { cardCoverOf, cleanCover, coverWithUrl, filesOf } from "./covers";
+import { locationPrecision, scene, storyCover, storyLocation } from "./schema";
 import {
   ageRange,
   categoryLabel,
@@ -28,7 +36,10 @@ const MAX_SOURCE = 300;
 // location is, and must have a category, age range, and source.
 const storyInput = {
   title: v.string(),
-  body: v.string(),
+  // The story in ordered scenes; `body` is derived from them.
+  scenes: v.array(scene),
+  // The card cover: a picture in a paper frame, or the colorful category cover.
+  cover: storyCover,
   author: v.optional(v.string()),
   location: v.optional(v.object({ ...storyLocation.fields, precision: locationPrecision })),
   category: storyCategory,
@@ -38,9 +49,16 @@ const storyInput = {
 };
 const storyInputObject = v.object(storyInput);
 
-function cleanStoryInput(args: Infer<typeof storyInputObject>) {
+async function cleanStoryInput(
+  ctx: MutationCtx,
+  args: Infer<typeof storyInputObject>,
+  // Who is writing, and the files this story already uses (empty for a new story).
+  owner: { userId: Id<"users">; storyFiles: Set<Id<"_storage">> },
+) {
   const title = args.title.trim();
-  const body = args.body.trim();
+  const scenes = await cleanScenes(ctx, args.scenes);
+  const cover = await cleanCover(ctx, args.cover, { scenes, ...owner });
+  const body = bodyOf(scenes);
   const author = args.author?.trim() || undefined;
 
   if (!title) throw new ConvexError("Title is required.");
@@ -73,7 +91,18 @@ function cleanStoryInput(args: Infer<typeof storyInputObject>) {
     throw new ConvexError(`Source must be ${MAX_SOURCE} characters or fewer.`);
   const source = { kind: args.source.kind, detail };
 
-  const content = { title, body, author, location, category: args.category, ageRange: args.ageRange, themes, source };
+  const content = {
+    title,
+    body,
+    scenes,
+    cover,
+    author,
+    location,
+    category: args.category,
+    ageRange: args.ageRange,
+    themes,
+    source,
+  };
   return { ...content, searchText: searchTextFor(content) };
 }
 
@@ -95,7 +124,10 @@ function searchTextFor({ title, author, location, category, themes }: Searchable
 // Removes a deleted story's rows from a per-story table.
 async function deleteByStory(
   ctx: MutationCtx,
-  table: Extract<TableNames, "savedStories" | "storyViews" | "placeVisits" | "collectionEntries">,
+  table: Extract<
+    TableNames,
+    "savedStories" | "storyViews" | "placeVisits" | "collectionEntries" | "readingPositions"
+  >,
   storyId: Id<"stories">,
 ) {
   for await (const row of ctx.db.query(table).withIndex("by_storyId", (q) => q.eq("storyId", storyId))) {
@@ -122,11 +154,15 @@ async function requireOwnStory(ctx: MutationCtx, id: Id<"stories">) {
 export const list = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
-    return await ctx.db
+    const result = await ctx.db
       .query("stories")
       .withIndex("by_status_and_approvedAt", (q) => q.eq("status", "approved"))
       .order("desc")
       .paginate(paginationOpts);
+    const page = await Promise.all(
+      result.page.map(async (story) => ({ ...story, cover: await cardCoverOf(ctx, story) })),
+    );
+    return { ...result, page };
   },
 });
 
@@ -140,8 +176,12 @@ export const mapped = query({
         q.eq("status", "approved").gte("location.lat", -90),
       )
       .take(MAX_MAP_STORIES);
-    return stories.flatMap(({ _id, title, author, location }) =>
-      location ? [{ _id, title, author, location }] : [],
+    return await Promise.all(
+      stories.flatMap((story) => {
+        const { _id, title, author, location, category, ageRange } = story;
+        if (!location) return [];
+        return [cardCoverOf(ctx, story).then((cover) => ({ _id, title, author, location, category, ageRange, cover }))];
+      }),
     );
   },
 });
@@ -154,13 +194,15 @@ export const get = query({
     const storyId = ctx.db.normalizeId("stories", id);
     const story = storyId ? await ctx.db.get(storyId) : null;
     if (!story) return null;
-    if (story.status === "approved") return story;
+    // Scenes are always present here: stories from before scenes come back as one scene.
+    const withScenes = async () => ({ ...story, scenes: await withImageUrls(ctx, scenesOf(story)) });
+    if (story.status === "approved") return await withScenes();
 
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
-    if (story.authorId === userId) return story;
+    if (story.authorId === userId) return await withScenes();
     const user = await ctx.db.get(userId);
-    return user?.isAdmin ? story : null;
+    return user?.isAdmin ? await withScenes() : null;
   },
 });
 
@@ -181,7 +223,9 @@ export const editable = query({
       status: story.status,
       revisionStatus: revision?.status ?? null,
       title: latest.title,
-      body: latest.body,
+      scenes: await withImageUrls(ctx, scenesOf(latest)),
+      // Null for stories that never chose a cover.
+      cover: await coverWithUrl(ctx, latest.cover),
       author: latest.author,
       location: latest.location,
       category: latest.category,
@@ -218,7 +262,7 @@ export const submit = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     return await ctx.db.insert("stories", {
-      ...cleanStoryInput(args),
+      ...(await cleanStoryInput(ctx, args, { userId: user._id, storyFiles: new Set() })),
       authorId: user._id,
       status: "pending",
     });
@@ -232,21 +276,37 @@ export const update = mutation({
   args: { id: v.id("stories"), ...storyInput },
   handler: async (ctx, { id, ...input }) => {
     const story = await requireOwnStory(ctx, id);
-    const content = cleanStoryInput(input);
+    const existing = await revisionFor(ctx, id);
+    const content = await cleanStoryInput(ctx, input, {
+      userId: story.authorId,
+      storyFiles: new Set([...filesOf(story), ...filesOf(existing)]),
+    });
+    const newFiles = filesOf(content);
 
     if (story.status !== "approved") {
       await ctx.db.patch(id, { ...content, status: "pending", approvedAt: undefined });
+      await deleteUnusedFiles(ctx, filesOf(story), newFiles);
       return;
     }
 
     const { searchText: _, ...revisionContent } = content;
     const revision = { ...revisionContent, status: "pending" as const, submittedAt: Date.now() };
-    const existing = await revisionFor(ctx, id);
     if (existing) {
       await ctx.db.replace(existing._id, { storyId: id, authorId: story.authorId, ...revision });
+      // Pictures dropped from the waiting edit, unless the published version still shows them.
+      await deleteUnusedFiles(ctx, filesOf(existing), newFiles, filesOf(story));
     } else {
       await ctx.db.insert("storyRevisions", { storyId: id, authorId: story.authorId, ...revision });
     }
+  },
+});
+
+// Authors upload illustrations here, then pass the storage id with the story's scenes.
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireUser(ctx);
+    return await ctx.storage.generateUploadUrl();
   },
 });
 
@@ -255,9 +315,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("stories") },
   handler: async (ctx, { id }) => {
-    await requireOwnStory(ctx, id);
+    const story = await requireOwnStory(ctx, id);
     const revision = await revisionFor(ctx, id);
     if (revision) await ctx.db.delete(revision._id);
+    await deleteUnusedFiles(ctx, new Set([...filesOf(story), ...filesOf(revision)]));
+    await deleteByStory(ctx, "readingPositions", id);
     await deleteByStory(ctx, "savedStories", id);
     await deleteByStory(ctx, "storyViews", id);
     await deleteByStory(ctx, "placeVisits", id);
@@ -271,10 +333,19 @@ export const pending = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
     await requireAdmin(ctx);
-    return await ctx.db
+    const result = await ctx.db
       .query("stories")
       .withIndex("by_status_and_approvedAt", (q) => q.eq("status", "pending"))
       .paginate(paginationOpts);
+    // Moderators see the pictures they're approving.
+    const page = await Promise.all(
+      result.page.map(async (story) => ({
+        ...story,
+        scenes: await withImageUrls(ctx, scenesOf(story)),
+        cardCover: await cardCoverOf(ctx, story),
+      })),
+    );
+    return { ...result, page };
   },
 });
 
@@ -306,6 +377,8 @@ export const pendingRevisions = query({
     const page = await Promise.all(
       result.page.map(async (revision) => ({
         ...revision,
+        scenes: await withImageUrls(ctx, scenesOf(revision)),
+        cardCover: await cardCoverOf(ctx, revision),
         publishedTitle: (await ctx.db.get(revision.storyId))?.title ?? null,
       })),
     );
@@ -330,14 +403,17 @@ export const reviewRevision = mutation({
       await ctx.db.patch(id, { status: "rejected" });
       return;
     }
-    const { title, body, author, location, category, ageRange, themes, source } = revision;
-    const content = { title, body, author, location, category, ageRange, themes, source };
+    const story = await ctx.db.get(revision.storyId);
+    const { title, body, scenes, cover, author, location, category, ageRange, themes, source } = revision;
+    const content = { title, body, scenes, cover, author, location, category, ageRange, themes, source };
     await ctx.db.patch(revision.storyId, {
       ...content,
       searchText: searchTextFor(content),
       editedAt: Date.now(),
     });
     await ctx.db.delete(id);
+    // Pictures the approved edit no longer uses.
+    await deleteUnusedFiles(ctx, filesOf(story), filesOf(revision));
   },
 });
 

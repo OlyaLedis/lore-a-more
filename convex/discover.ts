@@ -3,7 +3,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { distanceKm, isValidLatLng, NEARBY_KM, type LatLng } from "./geo";
-import { publishedStories, toCard } from "./storyCards";
+import { publishedStories, toCard, toCards } from "./storyCards";
 import {
   ageRange,
   categoryLabel,
@@ -20,28 +20,65 @@ const SHELF_SIZE = 12;
 const CANDIDATES = 200;
 const TOP_PICKS = 8;
 const SEARCH_RESULTS = 50;
-// About NEARBY_KM in degrees of latitude, with margin.
-const NEARBY_LAT_DEG = 0.5;
+// Searching around a chosen place: a village gets the default radius, a region a wider one.
+const MAX_RADIUS_KM = 300;
+const KM_PER_DEG_LAT = 111;
+const PLACE_SUGGESTIONS = 5;
 
 const latLng = v.object({ lat: v.number(), lng: v.number() });
 
-// Published stories within NEARBY_KM of `here`, nearest first.
-async function nearbyStories(ctx: QueryCtx, here: LatLng) {
+// Published stories within `radiusKm` of `here`, nearest first.
+async function nearbyStories(ctx: QueryCtx, here: LatLng, radiusKm = NEARBY_KM) {
   if (!isValidLatLng(here)) return [];
+  const radius = Math.min(Math.max(radiusKm, 1), MAX_RADIUS_KM);
+  // The latitude band that contains the circle, with a little margin.
+  const band = radius / KM_PER_DEG_LAT + 0.05;
   const inBand = await ctx.db
     .query("stories")
     .withIndex("by_status_and_lat", (q) =>
       q
         .eq("status", "approved")
-        .gte("location.lat", here.lat - NEARBY_LAT_DEG)
-        .lte("location.lat", here.lat + NEARBY_LAT_DEG),
+        .gte("location.lat", here.lat - band)
+        .lte("location.lat", here.lat + band),
     )
     .take(CANDIDATES);
   return inBand
     .map((story) => ({ story, km: distanceKm(here, story.location!) }))
-    .filter(({ km }) => km <= NEARBY_KM)
+    .filter(({ km }) => km <= radius)
     .sort((a, b) => a.km - b.km);
 }
+
+// Place names authors saved on published stories that match what the reader typed, so places
+// MapTiler doesn't know (like "Su Sterru, Golgo Plateau") can still be found. One entry per place
+// name, with how many stories are there.
+export const placeSuggestions = query({
+  args: { text: v.string() },
+  handler: async (ctx, { text }) => {
+    const terms = text.trim();
+    if (terms.length < 2) return [];
+    const words = terms
+      .toLowerCase()
+      .split(/[\s,]+/)
+      .filter((w) => w.length >= 2);
+    const matches = await ctx.db
+      .query("stories")
+      .withSearchIndex("search_text", (q) => q.search("searchText", terms).eq("status", "approved"))
+      .take(CANDIDATES);
+
+    const byPlace = new Map<string, { place: string; lat: number; lng: number; storyCount: number }>();
+    for (const story of matches) {
+      const place = story.location?.place;
+      if (!place) continue;
+      // The search also matches titles and themes; only suggest stories whose place name matches.
+      const name = place.toLowerCase();
+      if (!words.some((w) => name.includes(w))) continue;
+      const entry = byPlace.get(name);
+      if (entry) entry.storyCount++;
+      else byPlace.set(name, { place, lat: story.location!.lat, lng: story.location!.lng, storyCount: 1 });
+    }
+    return [...byPlace.values()].slice(0, PLACE_SUGGESTIONS);
+  },
+});
 
 // Public sections of Home: the Seasonal collection and the newest stories in each category.
 // Empty sections are left out.
@@ -53,21 +90,22 @@ export const home = query({
       .withIndex("by_collection_and_addedAt", (q) => q.eq("collection", "seasonal"))
       .order("desc")
       .take(SHELF_SIZE);
-    const seasonal = (await publishedStories(ctx, entries.map((e) => e.storyId))).map(toCard);
+    const seasonal = await toCards(ctx, await publishedStories(ctx, entries.map((e) => e.storyId)));
 
     const categories = await Promise.all(
       CATEGORIES.map(async ({ value, label }) => ({
         category: value,
         label,
-        stories: (
+        stories: await toCards(
+          ctx,
           await ctx.db
             .query("stories")
             .withIndex("by_status_and_category_and_approvedAt", (q) =>
               q.eq("status", "approved").eq("category", value),
             )
             .order("desc")
-            .take(SHELF_SIZE)
-        ).map(toCard),
+            .take(SHELF_SIZE),
+        ),
       })),
     );
 
@@ -75,13 +113,16 @@ export const home = query({
   },
 });
 
-// Stories Near You. `here` is used only for this query and never stored.
+// Stories Near You, or near a place the reader searched for. `here` is used only for this query and
+// never stored. `radiusKm` defaults to NEARBY_KM and is capped at MAX_RADIUS_KM.
 export const nearby = query({
-  args: { here: latLng },
-  handler: async (ctx, { here }) => {
-    return (await nearbyStories(ctx, here))
-      .slice(0, SHELF_SIZE)
-      .map(({ story, km }) => ({ ...toCard(story), distanceKm: Math.round(km * 10) / 10 }));
+  args: { here: latLng, radiusKm: v.optional(v.number()) },
+  handler: async (ctx, { here, radiusKm }) => {
+    return await Promise.all(
+      (await nearbyStories(ctx, here, radiusKm))
+        .slice(0, SHELF_SIZE)
+        .map(async ({ story, km }) => ({ ...(await toCard(ctx, story)), distanceKm: Math.round(km * 10) / 10 })),
+    );
   },
 });
 
@@ -160,10 +201,12 @@ export const topPicks = query({
       if (reason) picks.push({ story, score, reason });
     }
 
-    return picks
-      .sort((a, b) => b.score - a.score || (b.story.approvedAt ?? 0) - (a.story.approvedAt ?? 0))
-      .slice(0, TOP_PICKS)
-      .map(({ story, reason }) => ({ ...toCard(story), reason }));
+    return await Promise.all(
+      picks
+        .sort((a, b) => b.score - a.score || (b.story.approvedAt ?? 0) - (a.story.approvedAt ?? 0))
+        .slice(0, TOP_PICKS)
+        .map(async ({ story, reason }) => ({ ...(await toCard(ctx, story)), reason })),
+    );
   },
 });
 
@@ -204,11 +247,13 @@ export const search = query({
         .order("desc")
         .take(CANDIDATES);
     }
-    return stories
-      .filter((s) => !ageRange || (s.ageRange && suitableFor(s.ageRange, ageRange as AgeRange)))
-      .filter((s) => !theme || (s.themes ?? []).includes(theme))
-      .slice(0, SEARCH_RESULTS)
-      .map(toCard);
+    return await toCards(
+      ctx,
+      stories
+        .filter((s) => !ageRange || (s.ageRange && suitableFor(s.ageRange, ageRange as AgeRange)))
+        .filter((s) => !theme || (s.themes ?? []).includes(theme))
+        .slice(0, SEARCH_RESULTS),
+    );
   },
 });
 

@@ -2,11 +2,11 @@ import { useQuery } from 'convex/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
-import { HomeIcon, LibraryIcon, NewIcon, PlusIcon, SearchIcon } from './Icons'
+import { HomeIcon, LibraryIcon, MapIcon, PlusIcon, SearchIcon } from './Icons'
 
 const tabs = [
   { to: '/', label: 'Home', Icon: HomeIcon, end: true },
-  { to: '/new', label: 'New', Icon: NewIcon, end: false },
+  { to: '/map', label: 'Map', Icon: MapIcon, end: false },
   { to: '/library', label: 'Library', Icon: LibraryIcon, end: false },
 ]
 
@@ -94,7 +94,7 @@ function TopBar() {
   )
 }
 
-// Phone navigation: Home, New, and Library in one bar, and Search in its own circle beside it.
+// Phone navigation: Home, Map, and Library in one bar, and Search in its own circle beside it.
 function BottomBar() {
   const surface = 'border border-stone-200/80 bg-white/90 shadow-lg shadow-stone-900/10 backdrop-blur'
   return (

@@ -46,11 +46,45 @@ cover this lifecycle.
 **Discovery and categories.** New stories and edits require `category`, `ageRange`, and `source`, and
 can have up to 3 `themes`. All four are listed in `convex/taxonomy.ts`, which the frontend imports too.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
-the edit form asks the author instead. Home (`src/pages/Home.tsx`) is built from `discover.home`
+the edit form asks the author instead. Home opens with `FindStoriesBanner`: the reader types a place (suggestions come from
+`discover.placeSuggestions`, which matches authors' saved place names, plus MapTiler) or taps Use my
+location (asks for permission only then). Results come from `discover.nearby` with a radius sized to
+the place, and link to `/map?lat&lng&r&label`, which focuses the Map tab. Text that isn't a place falls
+back to `discover.search`. The rest of Home is built from `discover.home`
 (Seasonal plus category shelves), `discover.nearby`, `discover.topPicks` (rule-based, each pick carries
 its `reason`; empty with no signals, never random), and `library.*`. Search uses the `search_text`
 index on `stories.searchText`, which `stories.ts` keeps in sync on every content write. After deploying
 to a deployment with existing stories, run `npx convex run stories:backfillSearchText` once.
+
+**Scenes, illustrations, and reading mode.** `stories.scenes` (and `storyRevisions.scenes`) is an
+optional ordered list of `{ id, text, illustrations: [{ storageId, alt, credit? }] }`. `body` stays
+required: `submit` / `update` take `scenes` and derive `body` from them (`bodyOf` in `convex/scenes.ts`),
+so feeds, search, and review keep reading `body`. Stories without `scenes` (written before scenes) are
+never migrated: `scenesOf` presents them as one scene `s1` built from `body`, and `get`, `editable`,
+and the review queues always return scenes with picture URLs. `cleanScenes` checks that every picture
+is an uploaded `image/*` file of 5 MB or less, with alt text. Pictures dropped by an approved edit, a
+replaced pending edit, a direct edit, or a delete are removed from storage (`deleteUnusedFiles`); files
+uploaded but never submitted are not cleaned up yet. Reading mode is `/story/:id/read`
+(`src/components/ReadingView.tsx`): auto-scroll stops at each picture and on any manual scroll, there's
+no auto-scroll under reduced motion, and the position is an anchor like `s2:3` saved to
+`readingPositions` (signed in) and localStorage. Scenes have stable ids so an optional sound cue can be
+added later as an optional field; there is no audio now.
+
+**Story cards and covers.** Every story list (and Map popups and the review queue) uses `StoryCover` /
+`StoryCard` from `src/components/StoryCard.tsx`. Picture covers sit in a white paper frame with a 9% margin,
+fitted whole and then scaled and moved by `cover.scale` / `x` / `y`, which are display settings only.
+Without a picture the card uses the category gradient. Never put text inside the cover. `stories.cover` is
+`{ kind: "image", storageId, alt, credit?, scale, x, y }` or `{ kind: "colors" }`. Stories without `cover`
+fall back to their first illustration (`cardCoverOf` in `convex/covers.ts`). `cleanCover` accepts a picture
+only if it's one of the story's own illustrations, already its cover, or an upload the author claimed via
+`covers.claimUpload` (`uploads` table). Cover files are counted by `filesOf`, so cleanup keeps them. Title, category and age, place, and optional
+note each have a fixed height so rows align; the story page shows the full title and place.
+
+**Home layout.** Top Picks shows one `FeaturedStoryCard`. Recently Played, Places You've Been, Seasonal,
+and search results use `CardRow` / `Shelf` rows of small cards. Categories use `TwoCardGrid`. Rows sit
+inside the page gutter with no negative margins, so snapping starts at the same left edge as the headings.
+Under each cover: the title (two lines), the `AgeSymbol` (only "6+" / "8+" / "10+" is visible), and a short
+one-line place. There's no category text, because the cover color already shows it.
 
 **Reader history is private.** `savedStories` / `storyViews` / `placeVisits` are only read for
 `getAuthUserId(ctx)`. "Places You've Been" comes only from Mark as visited, or from opening or saving a
@@ -60,8 +94,9 @@ only when the reader taps "Show stories near me" (or silently if already granted
 about 1 km. `stories.remove` also deletes a story's rows in these tables and in `collectionEntries`.
 
 **Navigation.** `src/components/AppShell.tsx` holds the top bar (Add a Story, plus the initials avatar
-that links to `/account`) and the phone bottom bar (Home / New / Library, plus a separate Search
-circle). `/new` means newly published stories. Writing a story is `/write`.
+that links to `/account`) and the phone bottom bar (Home / Map / Library, plus a separate Search
+circle). The Map tab is `src/pages/MapPage.tsx` (pins from `stories.mapped`). `/new` lists newly published
+stories and is linked from Home. Writing a story is `/write`.
 
 **Authorization lives only in `convex/`.** `requireUser` / `requireAdmin` in `convex/users.ts` guard
 mutations and admin queries. `stories.get` returns non-approved stories only to their author or an
@@ -83,7 +118,10 @@ but `submit` requires it. A search result that is a town or region defaults to `
 rejects `"exact"` for such a result until the user moves the pin by hand (`locationProblem` in
 `src/location.ts`), so a town's center is never presented as the exact site. Place search calls the
 MapTiler Geocoding API from the browser (`src/geocoding.ts`) with `VITE_MAPTILER_KEY` from
-`.env.local`. Without the key, the form falls back to clicking a map. Map tiles are OpenStreetMap's
+`.env.local`. It sends every MapTiler place type including `poi`, because MapTiler leaves POIs out by
+default; don't narrow it to `poi` only. "Can't find the place? Choose it on the map" lets the author place
+a pin and type their own name (e.g. Su Sterru isn't in MapTiler's index). Hand-placed pins default to
+`"area"`, and the name, pin, and precision all stay editable in the edit form. Map tiles are OpenStreetMap's
 and need no key.
 
 **Frontend.** `react-router-dom` routes are in `src/App.tsx`. `ConvexAuthProvider` wraps the app in

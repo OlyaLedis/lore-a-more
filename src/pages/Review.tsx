@@ -1,4 +1,5 @@
 import { useMutation, usePaginatedQuery } from 'convex/react'
+import type { FunctionReturnType } from 'convex/server'
 import { ConvexError } from 'convex/values'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -6,6 +7,7 @@ import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
 import { byline, formatDate } from '../format'
 import { categoryLabel, SOURCE_KINDS, themeLabel } from '../../convex/taxonomy'
+import { StoryCover, type CardCover } from '../components/StoryCard'
 import { precisionNote } from '../location'
 
 type Decision = 'approved' | 'rejected'
@@ -65,7 +67,10 @@ function Queue({
   )
 }
 
-function PendingStory({ story }: { story: Doc<'stories'> }) {
+type PendingStoryItem = FunctionReturnType<typeof api.stories.pending>['page'][number]
+type PendingEditItem = FunctionReturnType<typeof api.stories.pendingRevisions>['page'][number]
+
+function PendingStory({ story }: { story: PendingStoryItem }) {
   const review = useMutation(api.stories.review)
   return (
     <ReviewCard
@@ -76,7 +81,7 @@ function PendingStory({ story }: { story: Doc<'stories'> }) {
   )
 }
 
-function PendingEdit({ revision }: { revision: Doc<'storyRevisions'> & { publishedTitle: string | null } }) {
+function PendingEdit({ revision }: { revision: PendingEditItem }) {
   const reviewRevision = useMutation(api.stories.reviewRevision)
   return (
     <ReviewCard
@@ -102,7 +107,11 @@ function ReviewCard({
   meta,
   onDecide,
 }: {
-  content: Pick<Doc<'stories'>, 'title' | 'body' | 'location' | 'category' | 'ageRange' | 'themes' | 'source'>
+  content: Pick<Doc<'stories'>, 'title' | 'body' | 'location' | 'category' | 'ageRange' | 'themes' | 'source'> & {
+    scenes: { illustrations: { storageId: string; alt: string; credit?: string; url: string | null }[] }[]
+    // The card cover the moderator is approving, as readers will see it.
+    cardCover: CardCover | null
+  }
   context?: ReactNode
   meta: string
   onDecide: (decision: Decision) => Promise<unknown>
@@ -125,7 +134,13 @@ function ReviewCard({
   return (
     <li className="rounded-xl border border-stone-200 bg-white p-5">
       {context}
-      <h3 className="font-serif text-xl font-semibold">{content.title}</h3>
+      <div className="flex items-start gap-4">
+        <figure className="w-20 shrink-0">
+          <StoryCover category={content.category} cover={content.cardCover} />
+          <figcaption className="mt-1 text-center text-[11px] text-stone-500">Cover</figcaption>
+        </figure>
+        <h3 className="font-serif text-xl font-semibold">{content.title}</h3>
+      </div>
       <p className="mt-1 text-sm text-stone-500">{meta}</p>
       {content.location && (
         <p className="mt-1 text-sm text-stone-500">
@@ -136,7 +151,7 @@ function ReviewCard({
       <p className="mt-1 text-sm text-stone-500">
         {[
           content.category ? categoryLabel(content.category) : 'No category',
-          content.ageRange ? `Ages ${content.ageRange}` : 'No age',
+          content.ageRange ?? 'No age set',
           ...(content.themes ?? []).map(themeLabel),
         ].join(' · ')}
       </p>
@@ -151,6 +166,28 @@ function ReviewCard({
       >
         {content.body}
       </div>
+      {content.scenes.length > 1 && (
+        <p className="mt-2 text-sm text-stone-500">{content.scenes.length} scenes</p>
+      )}
+      {content.scenes.some((s) => s.illustrations.length > 0) && (
+        <ul aria-label="Pictures" className="mt-3 flex flex-wrap gap-3">
+          {content.scenes.flatMap((scene, i) =>
+            scene.illustrations.map((ill) => (
+              <li key={ill.storageId} className="w-32">
+                {ill.url && (
+                  <a href={ill.url} target="_blank" rel="noreferrer">
+                    <img src={ill.url} alt={ill.alt} className="h-32 w-32 rounded-lg object-cover" />
+                  </a>
+                )}
+                <p className="mt-1 text-xs text-stone-600">
+                  Scene {i + 1}: {ill.alt}
+                  {ill.credit && <span className="block text-stone-400">Credit: {ill.credit}</span>}
+                </p>
+              </li>
+            )),
+          )}
+        </ul>
+      )}
       <button onClick={() => setExpanded(!expanded)} className="mt-2 text-sm text-stone-600 underline">
         {expanded ? 'Show less' : 'Read full story'}
       </button>

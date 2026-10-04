@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { api } from "./_generated/api";
+import type { StoryCover } from "./covers";
+import type { Scene } from "./scenes";
 import schema from "./schema";
 import type { AgeRange, StoryCategory, StorySource, StoryTheme } from "./taxonomy";
 
@@ -33,16 +35,23 @@ export async function setupUsers() {
 
 export type TestUsers = Awaited<ReturnType<typeof setupUsers>>;
 
+// A story told in one scene with no pictures.
+export function oneScene(text: string): Scene[] {
+  return [{ id: "s1", text, illustrations: [] }];
+}
+
 export const baseStory: {
   title: string;
-  body: string;
+  scenes: ReturnType<typeof oneScene>;
+  cover: StoryCover;
   category: StoryCategory;
   ageRange: AgeRange;
   themes: StoryTheme[];
   source: StorySource;
 } = {
   title: "The mill",
-  body: "Once upon a time.",
+  scenes: oneScene("Once upon a time."),
+  cover: { kind: "colors" },
   category: "folktale",
   ageRange: "6+",
   themes: [],

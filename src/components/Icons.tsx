@@ -77,3 +77,22 @@ export function CheckIcon({ className = 'h-5 w-5' }: IconProps) {
     </svg>
   )
 }
+
+export function MapIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2z" />
+      <path d="M9 4.5v13M15 6.5v13" />
+    </svg>
+  )
+}
+
+export function LocateIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="6.5" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
+    </svg>
+  )
+}

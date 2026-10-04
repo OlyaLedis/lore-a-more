@@ -3,8 +3,12 @@ import type { PlaceResult } from './geocoding'
 export type Precision = 'exact' | 'area' | 'uncertain'
 
 export const PRECISION_OPTIONS: { value: Precision; label: string; hint: string }[] = [
-  { value: 'exact', label: 'Exact site', hint: 'The story is tied to this specific spot.' },
-  { value: 'area', label: 'Town or general area', hint: 'Somewhere in or around this place.' },
+  { value: 'exact', label: 'Exact location', hint: 'The pin marks the very spot, such as a castle or cave.' },
+  {
+    value: 'area',
+    label: 'Approximate area',
+    hint: 'Somewhere around the pin, such as a town, valley, or plateau.',
+  },
   { value: 'uncertain', label: 'Uncertain', hint: 'Tradition or memory places it roughly here.' },
 ]
 
@@ -12,9 +16,9 @@ export const PRECISION_OPTIONS: { value: Precision; label: string; hint: string 
 export function precisionNote(precision: Precision | undefined) {
   switch (precision) {
     case 'exact':
-      return 'Exact site'
+      return 'Exact location'
     case 'area':
-      return 'Town or general area, not an exact site'
+      return 'Approximate area, not an exact site'
     case 'uncertain':
       return 'Location uncertain'
     default:
@@ -57,7 +61,7 @@ export function draftFromPlace(p: PlaceResult): LocationDraft {
 // A town's or region's center must not be passed off as the exact site of an event.
 export function locationProblem(d: LocationDraft | null) {
   if (d && d.precision === 'exact' && !d.pointLike && !d.adjusted) {
-    return 'You marked this as an exact site, but the pin is at the center of the search result. Use “Adjust location on map” to put it on the spot, or choose “Town or general area”.'
+    return 'You marked this as an exact location, but the pin is at the center of the search result. Use “Adjust location on map” to put it on the spot, or choose “Approximate area”.'
   }
   return null
 }

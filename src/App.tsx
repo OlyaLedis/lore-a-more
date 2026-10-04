@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Library from './pages/Library'
 import MapPage from './pages/MapPage'
 import MyStories from './pages/MyStories'
+import ReadPage from './pages/ReadPage'
 import Review from './pages/Review'
 import Search from './pages/Search'
 import SignIn from './pages/SignIn'
@@ -30,6 +31,8 @@ export default function App() {
         <Route path="/map" element={<MapPage />} />
         <Route path="/signin" element={<Narrow><SignIn /></Narrow>} />
         <Route path="/story/:id" element={<Narrow><StoryPage /></Narrow>} />
+        {/* Full-screen; drawn above the app's bars. */}
+        <Route path="/story/:id/read" element={<ReadPage />} />
         <Route
           path="/write"
           element={

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
-import { publish, setupUsers } from "./test.setup";
+import { baseStory, oneScene, publish, setupUsers } from "./test.setup";
 
 const lisbon = { lat: 38.7139, lng: -9.1394, place: "Lisbon, Portugal", precision: "area" as const };
 const porto = { lat: 41.1496, lng: -8.611, place: "Porto, Portugal", precision: "area" as const };
@@ -23,11 +23,12 @@ describe("search and filters", () => {
     // Pending stories never show up.
     await users.author.mutation(api.stories.submit, {
       title: "Castle draft",
-      body: "…",
+      scenes: oneScene("…"),
       category: "local_legend",
       ageRange: "6+",
       themes: ["castles"],
       source: { kind: "personal" },
+      cover: { kind: "colors" },
     });
 
     const ids = async (args: Record<string, string>) =>
@@ -80,11 +81,12 @@ describe("home sections", () => {
     const legend = await publish(users, { category: "local_legend" });
     await users.author.mutation(api.stories.submit, {
       title: "Pending",
-      body: "…",
+      scenes: oneScene("…"),
       category: "personal",
       ageRange: "6+",
       themes: [],
       source: { kind: "personal" },
+      cover: { kind: "colors" },
     });
 
     const { categories, seasonal } = await users.t.query(api.discover.home, {});
@@ -165,5 +167,45 @@ describe("Top Picks", () => {
 
     const picks = await users.reader.query(api.discover.topPicks, {});
     expect(picks.map((p) => p._id)).toEqual([forYoung]);
+  });
+});
+
+describe("finding stories by place on Home", () => {
+  const suSterru = { lat: 40.0779, lng: 9.6697, place: "Su Sterru, Golgo Plateau", precision: "exact" as const };
+
+  test("suggests place names authors saved, even ones no geocoder knows", async () => {
+    const users = await setupUsers();
+    await publish(users, { title: "The sinkhole", location: suSterru });
+    await publish(users, { title: "Shepherds of the plateau", location: suSterru });
+    // A story that only mentions the word in its title isn't a place suggestion.
+    await publish(users, { title: "Sterru and the giant", location: lisbon });
+    // Unpublished stories never leak through suggestions.
+    await users.author.mutation(api.stories.submit, {
+      ...baseStory,
+      location: { ...suSterru, place: "Su Sterru secret draft" },
+    });
+
+    expect(await users.t.query(api.discover.placeSuggestions, { text: "Su Sterru" })).toEqual([
+      { place: "Su Sterru, Golgo Plateau", lat: suSterru.lat, lng: suSterru.lng, storyCount: 2 },
+    ]);
+    // Typing part of a word works too.
+    expect((await users.t.query(api.discover.placeSuggestions, { text: "Golgo" })).map((p) => p.place)).toEqual([
+      "Su Sterru, Golgo Plateau",
+    ]);
+    expect(await users.t.query(api.discover.placeSuggestions, { text: "s" })).toEqual([]);
+    expect(await users.t.query(api.discover.placeSuggestions, { text: "Atlantis" })).toEqual([]);
+  });
+
+  test("searching around a place uses a radius that fits it, capped for very large areas", async () => {
+    const users = await setupUsers();
+    const near = await publish(users, { location: lisbon });
+    const far = await publish(users, { location: porto }); // about 275 km from Lisbon
+
+    const ids = async (radiusKm?: number) =>
+      (await users.t.query(api.discover.nearby, { here: inLisbon, radiusKm })).map((s) => s._id);
+    expect(await ids()).toEqual([near]);
+    expect(await ids(300)).toEqual([near, far]);
+    expect(await ids(5000)).toEqual([near, far]);
+    expect(await ids(0)).toEqual([near]);
   });
 });

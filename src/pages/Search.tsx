@@ -89,11 +89,11 @@ export default function Search() {
         </FilterRow>
         <FilterRow label="Suitable for">
           <Chip active={!age} onClick={() => setFilter('age', undefined)}>
-            Any age
+            All
           </Chip>
           {AGE_RANGES.map((a) => (
             <Chip key={a} active={age === a} onClick={() => setFilter('age', a)}>
-              Ages {a}
+              {a}
             </Chip>
           ))}
         </FilterRow>

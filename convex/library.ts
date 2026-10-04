@@ -5,7 +5,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { atPlaceKm, distanceKm, isValidLatLng, type LatLng } from "./geo";
-import { publishedStories, toCard } from "./storyCards";
+import { publishedStories, toCards } from "./storyCards";
 import { requireUser } from "./users";
 
 const LIST_SIZE = 30;
@@ -132,7 +132,7 @@ export const saved = query({
       .withIndex("by_userId_and_savedAt", (q) => q.eq("userId", userId))
       .order("desc")
       .take(LIST_SIZE);
-    return (await publishedStories(ctx, rows.map((r) => r.storyId))).map(toCard);
+    return await toCards(ctx, await publishedStories(ctx, rows.map((r) => r.storyId)));
   },
 });
 
@@ -147,7 +147,7 @@ export const recentlyPlayed = query({
       .withIndex("by_userId_and_viewedAt", (q) => q.eq("userId", userId))
       .order("desc")
       .take(LIST_SIZE);
-    return (await publishedStories(ctx, rows.map((r) => r.storyId))).map(toCard);
+    return await toCards(ctx, await publishedStories(ctx, rows.map((r) => r.storyId)));
   },
 });
 
@@ -162,6 +162,43 @@ export const placesVisited = query({
       .withIndex("by_userId_and_visitedAt", (q) => q.eq("userId", userId))
       .order("desc")
       .take(LIST_SIZE);
-    return (await publishedStories(ctx, rows.map((r) => r.storyId))).map(toCard);
+    return await toCards(ctx, await publishedStories(ctx, rows.map((r) => r.storyId)));
+  },
+});
+
+const MAX_ANCHOR = 80;
+
+// Where the signed-in reader stopped in reading mode, or null.
+export const readingPosition = query({
+  args: { storyId: v.id("stories") },
+  handler: async (ctx, { storyId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const row = await ctx.db
+      .query("readingPositions")
+      .withIndex("by_userId_and_storyId", (q) => q.eq("userId", userId).eq("storyId", storyId))
+      .unique();
+    return row?.anchor ?? null;
+  },
+});
+
+// Remembers where the reader stopped. Signed-out readers keep it in their browser instead.
+export const saveReadingPosition = mutation({
+  args: { storyId: v.id("stories"), anchor: v.string() },
+  handler: async (ctx, { storyId, anchor }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId || anchor.length > MAX_ANCHOR) return null;
+    const story = await ctx.db.get(storyId);
+    if (!story || story.status !== "approved") return null;
+    const existing = await ctx.db
+      .query("readingPositions")
+      .withIndex("by_userId_and_storyId", (q) => q.eq("userId", userId).eq("storyId", storyId))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { anchor, updatedAt: Date.now() });
+    } else {
+      await ctx.db.insert("readingPositions", { userId, storyId, anchor, updatedAt: Date.now() });
+    }
+    return null;
   },
 });

@@ -36,7 +36,7 @@ export default function Account() {
                 me.ageRange === age ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 hover:border-stone-500'
               }`}
             >
-              {age ? `Ages ${age}` : 'Any age'}
+              {age ?? 'All'}
             </button>
           ))}
         </div>

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
-import { publish, setupUsers } from "./test.setup";
+import { oneScene, publish, setupUsers } from "./test.setup";
 
 const castle = { lat: 38.6916, lng: -9.2159, place: "Belém Tower", precision: "exact" as const };
 const atCastle = { lat: 38.6917, lng: -9.216 };
@@ -42,11 +42,12 @@ describe("Recently Played", () => {
     const users = await setupUsers();
     const draft = await users.author.mutation(api.stories.submit, {
       title: "Draft",
-      body: "…",
+      scenes: oneScene("…"),
       category: "personal",
       ageRange: "6+",
       themes: [],
       source: { kind: "personal" },
+      cover: { kind: "colors" },
     });
     await users.author.mutation(api.library.recordView, { storyId: draft });
     expect(await users.author.query(api.library.recentlyPlayed, {})).toEqual([]);

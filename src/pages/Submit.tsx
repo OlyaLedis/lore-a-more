@@ -14,8 +14,13 @@ import {
   type StorySource,
   type StoryTheme,
 } from '../../convex/taxonomy'
+import { CoverPicker } from '../components/CoverPicker'
 import { LocationField } from '../components/LocationField'
+import { ReadingView } from '../components/ReadingView'
+import { SceneEditor } from '../components/SceneEditor'
+import { coverForSubmit, coverProblem, effectiveCover, initialCover, type CoverDraft } from '../covers'
 import { draftFromSaved, locationProblem, toSubmitLocation, type LocationDraft } from '../location'
+import { draftsFromScenes, emptyScene, scenesForSubmit, scenesProblem, type DraftScene } from '../scenes'
 
 const inputClass =
   'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus:border-stone-900 focus:outline-none'
@@ -23,7 +28,8 @@ const inputClass =
 type StoryValues = {
   title: string
   author?: string
-  body: string
+  scenes: ReturnType<typeof scenesForSubmit>
+  cover: ReturnType<typeof coverForSubmit>
   location?: ReturnType<typeof toSubmitLocation>
   category: StoryCategory
   ageRange: AgeRange
@@ -34,7 +40,8 @@ type StoryValues = {
 type Initial = {
   title: string
   author: string
-  body: string
+  scenes: DraftScene[]
+  cover: CoverDraft
   location: LocationDraft | null
   category?: StoryCategory
   ageRange?: AgeRange
@@ -104,7 +111,10 @@ export function EditStory() {
       initial={{
         title: story.title,
         author: story.author ?? '',
-        body: story.body,
+        // Stories from before scenes arrive as one scene; the author can divide it.
+        scenes: draftsFromScenes(story.scenes),
+        // Starts as whatever the story's card shows now.
+        cover: initialCover(story.cover, draftsFromScenes(story.scenes)),
         location: story.location ? draftFromSaved(story.location) : null,
         category: story.category,
         ageRange: story.ageRange,
@@ -139,7 +149,10 @@ function StoryForm({
 }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [author, setAuthor] = useState(initial?.author ?? '')
-  const [body, setBody] = useState(initial?.body ?? '')
+  const [scenes, setScenes] = useState<DraftScene[]>(() => initial?.scenes ?? [emptyScene()])
+  const [coverDraft, setCoverDraft] = useState<CoverDraft>(initial?.cover ?? { kind: 'colors' })
+  const [uploading, setUploading] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [category, setCategory] = useState<StoryCategory | undefined>(initial?.category)
   const [ageRange, setAgeRange] = useState<AgeRange | undefined>(initial?.ageRange)
   const [themes, setThemes] = useState<StoryTheme[]>(initial?.themes ?? [])
@@ -147,6 +160,9 @@ function StoryForm({
   const [location, setLocation] = useState<LocationDraft | null>(initial?.location ?? null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // The cover as it will be saved: a removed scene picture falls back to the colorful cover.
+  const shownCover = effectiveCover(coverDraft, scenes)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -156,7 +172,8 @@ function StoryForm({
       setError('Choose a category, an age, and where the story comes from.')
       return
     }
-    const problem = locationProblem(location)
+    const cover = effectiveCover(coverDraft, scenes)
+    const problem = scenesProblem(scenes) ?? coverProblem(cover) ?? locationProblem(location)
     if (problem) {
       setError(problem)
       return
@@ -165,7 +182,8 @@ function StoryForm({
     try {
       await onSave({
         title,
-        body,
+        scenes: scenesForSubmit(scenes),
+        cover: coverForSubmit(cover),
         author: author || undefined,
         location: toSubmitLocation(location),
         category,
@@ -208,16 +226,24 @@ function StoryForm({
           placeholder="Anonymous"
         />
       </label>
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium">Story</span>
-        <textarea
-          className={`${inputClass} min-h-80 font-serif leading-relaxed`}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          maxLength={50000}
-          required
+      <SceneEditor scenes={scenes} onChange={setScenes} onUploadingChange={setUploading} />
+      <button
+        type="button"
+        onClick={() => setPreviewing(true)}
+        disabled={!scenes.some((sc) => sc.text.trim() || sc.illustrations.length > 0)}
+        className="rounded-full border border-stone-900 px-5 py-2 text-sm font-semibold hover:bg-stone-100 disabled:opacity-40"
+      >
+        Preview reading mode
+      </button>
+      {previewing && (
+        <ReadingView
+          title={title.trim() || 'Untitled story'}
+          author={author.trim() || undefined}
+          scenes={scenes}
+          onClose={() => setPreviewing(false)}
+          closeLabel="Back to editing"
         />
-      </label>
+      )}
 
       <ChoiceGroup legend="Category">
         <div className="grid gap-2 sm:grid-cols-2">
@@ -293,6 +319,19 @@ function StoryForm({
 
       <LocationField value={location} onChange={setLocation} />
 
+      {coverDraft.kind === 'image' && shownCover.kind === 'colors' && (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          The picture you chose as the cover was removed from the story, so the colorful cover will be used.
+        </p>
+      )}
+      <CoverPicker
+        cover={shownCover}
+        onChange={setCoverDraft}
+        scenes={scenes}
+        preview={{ title: title.trim(), category, ageRange, place: location?.place.trim() || undefined }}
+        onUploadingChange={setUploading}
+      />
+
       <ChoiceGroup
         legend="Where does this story come from?"
         hint="Retellings are shown as creative versions, not as verified history."
@@ -336,10 +375,10 @@ function StoryForm({
       <div className="flex flex-wrap items-center gap-4">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || uploading}
           className="rounded-full bg-stone-900 px-6 py-2 font-medium text-white hover:bg-stone-700 disabled:opacity-50"
         >
-          {submitting ? 'Submitting…' : submitLabel}
+          {submitting ? 'Submitting…' : uploading ? 'Uploading picture…' : submitLabel}
         </button>
         {onCancel && (
           <button type="button" onClick={onCancel} className="text-sm text-stone-600 hover:text-stone-900">

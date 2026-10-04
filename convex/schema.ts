@@ -18,6 +18,46 @@ export const storyMetadata = {
   source: v.optional(storySource),
 };
 
+// An illustration in a scene. Files live in Convex storage.
+export const illustration = v.object({
+  storageId: v.id("_storage"),
+  // Describes the picture for readers who can't see it. Required.
+  alt: v.string(),
+  // Who made the picture, if the author wants to credit them.
+  credit: v.optional(v.string()),
+});
+
+// One part of a story, in reading order. Stories written before scenes existed have no `scenes`;
+// they're read as a single scene made from `body`. The stable `id` lets later additions attach to a
+// scene, e.g. an optional sound cue such as { cue: "forest", label: "Play forest sounds" } can be
+// added as an optional field without migrating existing scenes.
+export const scene = v.object({
+  id: v.string(),
+  text: v.string(),
+  illustrations: v.array(illustration),
+});
+
+// A story's card cover. "image" shows a picture inside a white paper frame; `scale`, `x`, and `y` are
+// display settings only (the uploaded file is never cropped or changed). "colors" is the author's
+// choice of the colorful category cover. Stories without `cover` use their first illustration, or
+// the colorful cover if they have none.
+export const COVER_SCALE = { min: 0.5, max: 3 };
+export const COVER_OFFSET = 0.5;
+export const storyCover = v.union(
+  v.object({
+    kind: v.literal("image"),
+    storageId: v.id("_storage"),
+    alt: v.string(),
+    credit: v.optional(v.string()),
+    // 1 fits the whole picture inside the frame's margins.
+    scale: v.number(),
+    // Offsets as fractions of the frame's inner width/height, from -0.5 to 0.5.
+    x: v.number(),
+    y: v.number(),
+  }),
+  v.object({ kind: v.literal("colors") }),
+);
+
 // How precisely the pin marks the story's place. A town's center is "area", never "exact".
 export const locationPrecision = v.union(
   v.literal("exact"),
@@ -53,7 +93,10 @@ export default defineSchema({
     .index("phone", ["phone"]),
   stories: defineTable({
     title: v.string(),
+    // The whole text. For stories with scenes it's derived from them, so feeds and search keep working.
     body: v.string(),
+    scenes: v.optional(v.array(scene)),
+    cover: v.optional(storyCover),
     // Optional pen name shown as the byline; the account itself stays private.
     author: v.optional(v.string()),
     authorId: v.id("users"),
@@ -83,6 +126,8 @@ export default defineSchema({
     authorId: v.id("users"),
     title: v.string(),
     body: v.string(),
+    scenes: v.optional(v.array(scene)),
+    cover: v.optional(storyCover),
     author: v.optional(v.string()),
     location: v.optional(storyLocation),
     ...storyMetadata,
@@ -119,6 +164,23 @@ export default defineSchema({
     how: v.union(v.literal("marked"), v.literal("opened_here"), v.literal("saved_here")),
   })
     .index("by_userId_and_visitedAt", ["userId", "visitedAt"])
+    .index("by_userId_and_storyId", ["userId", "storyId"])
+    .index("by_storyId", ["storyId"]),
+
+  // Who uploaded a file. A separately uploaded cover is accepted only from the author who uploaded
+  // it, so a story can never show a picture that belongs to someone else's story.
+  uploads: defineTable({
+    storageId: v.id("_storage"),
+    userId: v.id("users"),
+  }).index("by_storageId", ["storageId"]),
+
+  // Where a reader stopped in reading mode: a paragraph or picture anchor like "s2:3".
+  readingPositions: defineTable({
+    userId: v.id("users"),
+    storyId: v.id("stories"),
+    anchor: v.string(),
+    updatedAt: v.number(),
+  })
     .index("by_userId_and_storyId", ["userId", "storyId"])
     .index("by_storyId", ["storyId"]),
 

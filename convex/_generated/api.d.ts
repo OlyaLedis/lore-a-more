@@ -9,10 +9,12 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as covers from "../covers.js";
 import type * as discover from "../discover.js";
 import type * as geo from "../geo.js";
 import type * as http from "../http.js";
 import type * as library from "../library.js";
+import type * as scenes from "../scenes.js";
 import type * as stories from "../stories.js";
 import type * as storyCards from "../storyCards.js";
 import type * as taxonomy from "../taxonomy.js";
@@ -26,10 +28,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  covers: typeof covers;
   discover: typeof discover;
   geo: typeof geo;
   http: typeof http;
   library: typeof library;
+  scenes: typeof scenes;
   stories: typeof stories;
   storyCards: typeof storyCards;
   taxonomy: typeof taxonomy;

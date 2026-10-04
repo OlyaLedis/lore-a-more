@@ -1,8 +1,9 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
+import { cardCoverOf } from "./covers";
 
 // What a story card needs: no body, no author account.
-export function toCard(story: Doc<"stories">) {
+export async function toCard(ctx: QueryCtx, story: Doc<"stories">) {
   return {
     _id: story._id,
     title: story.title,
@@ -14,10 +15,16 @@ export function toCard(story: Doc<"stories">) {
     precision: story.location?.precision,
     hasLocation: story.location !== undefined,
     approvedAt: story.approvedAt,
+    // The picture and its framing, or null for the colorful category cover.
+    cover: await cardCoverOf(ctx, story),
   };
 }
 
-export type StoryCard = ReturnType<typeof toCard>;
+export type StoryCard = Awaited<ReturnType<typeof toCard>>;
+
+export async function toCards(ctx: QueryCtx, stories: Doc<"stories">[]) {
+  return await Promise.all(stories.map((story) => toCard(ctx, story)));
+}
 
 // Loads stories by id for a list (saved, history, collections), keeping only published ones in order.
 export async function publishedStories(ctx: QueryCtx, ids: Id<"stories">[]) {

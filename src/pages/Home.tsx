@@ -1,9 +1,12 @@
 import { useConvexAuth, useQuery } from 'convex/react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
-import { PinIcon, PlusIcon, SearchIcon } from '../components/Icons'
+import { NEARBY_KM } from '../../convex/geo'
+import { FindStoriesBanner, type BannerStatus, type FindTarget } from '../components/FindStoriesBanner'
+import { NewIcon, PlusIcon, SearchIcon } from '../components/Icons'
 import { PageHeader } from '../components/PageHeader'
-import { HeroStoryCard, Shelf, StoryCard } from '../components/StoryCard'
+import { CardRow, FeaturedStoryCard, Section, Shelf, StoryCard, TwoCardGrid } from '../components/StoryCard'
 import { useHere } from '../here'
 
 // Curated discovery, not the full list: each section appears only when it has stories to show.
@@ -23,14 +26,14 @@ export default function Home() {
     <div>
       <PageHeader title="Home" />
 
-      <NearYou />
+      <FindStories />
 
+      {/* Page rhythm: one featured story, rows of small cards for your history and the season,
+          then two-card grids for each category. */}
       {topPicks && topPicks.length > 0 && (
-        <Shelf title="Top Picks for You" subtitle="Chosen from where you are and what you've explored.">
-          {topPicks.map((story) => (
-            <StoryCard key={story._id} story={story} note={story.reason} />
-          ))}
-        </Shelf>
+        <Section title="Top Picks for You">
+          <FeaturedStoryCard story={topPicks[0]} note={topPicks[0].reason} />
+        </Section>
       )}
 
       {placesVisited && placesVisited.length > 0 && (
@@ -58,11 +61,9 @@ export default function Home() {
       )}
 
       {home?.categories.map(({ category, label, stories }) => (
-        <Shelf key={category} title={label} seeAll={`/search?category=${category}`}>
-          {stories.map((story) => (
-            <StoryCard key={story._id} story={story} />
-          ))}
-        </Shelf>
+        <Section key={category} title={label} seeAll={`/search?category=${category}`}>
+          <TwoCardGrid stories={stories} />
+        </Section>
       ))}
 
       {home === undefined && <p className="mt-10 text-stone-500">Loading stories…</p>}
@@ -95,13 +96,13 @@ export default function Home() {
           </span>
         </Link>
         <Link
-          to="/map"
+          to="/new"
           className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5 hover:border-stone-400"
         >
-          <PinIcon className="h-7 w-7 text-orange-600" />
+          <NewIcon className="h-7 w-7 text-orange-600" />
           <span>
-            <span className="block font-semibold">Story map</span>
-            <span className="text-sm text-stone-500">See where stories are connected to.</span>
+            <span className="block font-semibold">New stories</span>
+            <span className="text-sm text-stone-500">Everything recently published, newest first.</span>
           </span>
         </Link>
       </section>
@@ -109,86 +110,175 @@ export default function Home() {
   )
 }
 
-// The first card: the nearest published story, once the reader chooses to share their location.
-function NearYou() {
+type Finding =
+  | { kind: 'none' }
+  | { kind: 'place'; target: FindTarget }
+  | { kind: 'text'; text: string }
+  | { kind: 'location' }
+
+// The banner and whatever it found, shown right below it.
+function FindStories() {
   const here = useHere()
-  const nearby = useQuery(api.discover.nearby, here.position ? { here: here.position } : 'skip')
+  const [finding, setFinding] = useState<Finding>({ kind: 'none' })
+  const resultsRef = useRef<HTMLDivElement>(null)
 
-  if (here.status === 'granted' && nearby && nearby.length > 0) {
-    const [first, ...more] = nearby
-    return (
-      <div>
-        <HeroStoryCard
-          story={first}
-          eyebrow="Stories Near You"
-          detail={first.distanceKm < 1 ? 'less than 1 km away' : `${Math.round(first.distanceKm)} km away`}
-        />
-        {more.length > 0 && (
-          <Shelf title="More nearby">
-            {more.map((story) => (
-              <StoryCard key={story._id} story={story} note={`${Math.round(story.distanceKm)} km away`} />
-            ))}
-          </Shelf>
-        )}
-      </div>
-    )
-  }
+  // Bring the results into view, which matters on a phone where they start below the fold.
+  const showResults = () =>
+    setTimeout(() => {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      resultsRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    }, 50)
 
-  let body
-  if (here.status === 'granted' && nearby === undefined) {
-    body = <p className="mt-2 text-white/85">Finding stories near you…</p>
-  } else if (here.status === 'granted') {
-    body = (
-      <>
-        <p className="mt-2 max-w-md text-white/85">
-          No published stories are connected to places within 50 km of you yet. Know one?
-        </p>
-        <Link to="/write" className="mt-5 inline-block rounded-full bg-white px-5 py-2.5 font-semibold text-stone-900">
-          Add a Story
-        </Link>
-      </>
-    )
-  } else if (here.status === 'denied' || here.status === 'unavailable') {
-    body = (
-      <>
-        <p className="mt-2 max-w-md text-white/85">
-          {here.status === 'denied'
-            ? "Location is turned off for StoryPlace, so we can't show stories near you. You can allow it in your browser's site settings."
-            : "Your location isn't available right now."}{' '}
-          You can still explore every story on the map.
-        </p>
-        <Link to="/map" className="mt-5 inline-block rounded-full bg-white px-5 py-2.5 font-semibold text-stone-900">
-          Open the story map
-        </Link>
-      </>
-    )
-  } else {
-    body = (
-      <>
-        <p className="mt-2 max-w-md text-white/85">
-          Share your location to find stories connected to places around you (it's never saved).
-        </p>
-        <button
-          type="button"
-          onClick={here.request}
-          disabled={here.status === 'locating' || here.status === 'checking'}
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-semibold text-stone-900 disabled:opacity-70"
-        >
-          <PinIcon className="h-4 w-4" />
-          {here.status === 'locating' ? 'Finding you…' : 'Show stories near me'}
-        </button>
-      </>
-    )
+  const usingLocation = finding.kind === 'location'
+  const locationTarget: FindTarget | null =
+    usingLocation && here.status === 'granted' && here.position
+      ? { label: 'you', center: here.position, radiusKm: NEARBY_KM }
+      : null
+
+  let status: BannerStatus = null
+  if (usingLocation && here.status === 'denied') {
+    status = {
+      tone: 'error',
+      text: "Location access is turned off for StoryPlace, so we can't look around you. You can allow it in your browser's site settings, or type a place above.",
+    }
+  } else if (usingLocation && here.status === 'unavailable') {
+    status = { tone: 'error', text: "We couldn't get your location just now. Try again, or type a place above." }
+  } else if (usingLocation && here.status === 'locating') {
+    status = { tone: 'info', text: 'Asking your browser for your location…' }
   }
 
   return (
-    <section
-      aria-label="Stories Near You"
-      className="relative overflow-hidden rounded-3xl bg-linear-to-br from-stone-900 via-stone-800 to-orange-900 p-6 text-white sm:p-8"
-    >
-      <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-orange-500/25" />
-      <p className="relative text-sm font-semibold uppercase tracking-wide text-orange-300">Stories Near You</p>
-      <div className="relative">{body}</div>
+    <div>
+      <FindStoriesBanner
+        onFind={(target) => {
+          setFinding({ kind: 'place', target })
+          showResults()
+        }}
+        onNoPlace={(text) => {
+          setFinding({ kind: 'text', text })
+          showResults()
+        }}
+        onUseLocation={() => {
+          setFinding({ kind: 'location' })
+          here.request()
+          showResults()
+        }}
+        locating={usingLocation && here.status === 'locating'}
+        status={status}
+      />
+      <div ref={resultsRef} className="scroll-mt-24">
+        {finding.kind === 'place' && (
+          <NearbyResults target={finding.target} onClear={() => setFinding({ kind: 'none' })} />
+        )}
+        {locationTarget && <NearbyResults target={locationTarget} onClear={() => setFinding({ kind: 'none' })} />}
+        {finding.kind === 'text' && <TextResults text={finding.text} onClear={() => setFinding({ kind: 'none' })} />}
+      </div>
+    </div>
+  )
+}
+
+function ResultsHeader({ title, subtitle, onClear }: { title: string; subtitle?: string; onClear: () => void }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p>}
+      </div>
+      <button type="button" onClick={onClear} className="shrink-0 text-sm font-medium text-stone-600 underline hover:text-stone-900">
+        Clear
+      </button>
+    </div>
+  )
+}
+
+const emptyBox = 'mt-4 rounded-2xl border border-dashed border-stone-300 bg-white px-5 py-6'
+const pillLink = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold'
+
+function NearbyResults({ target, onClear }: { target: FindTarget; onClear: () => void }) {
+  const stories = useQuery(api.discover.nearby, { here: target.center, radiusKm: target.radiusKm })
+  const where = target.label === 'you' ? 'you' : target.label
+  const mapHref = `/map?${new URLSearchParams({
+    lat: String(target.center.lat),
+    lng: String(target.center.lng),
+    r: String(target.radiusKm),
+    label: target.label === 'you' ? 'your location' : target.label,
+  })}`
+
+  return (
+    <section aria-live="polite" aria-label={`Stories near ${where}`} className="mt-8">
+      <ResultsHeader
+        title={`Stories near ${where}`}
+        subtitle={`Within ${target.radiusKm} km${stories?.length ? ` · ${stories.length} found` : ''}`}
+        onClear={onClear}
+      />
+      {stories === undefined ? (
+        <p className="mt-4 text-stone-500">Looking for stories near {where}…</p>
+      ) : stories.length === 0 ? (
+        <div className={emptyBox}>
+          <p className="text-stone-700">
+            No published stories are connected to places within {target.radiusKm} km of {where} yet.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link to="/map" className={`${pillLink} border border-stone-300 hover:border-stone-500`}>
+              Explore the map
+            </Link>
+            <Link to="/write" className={`${pillLink} bg-orange-600 text-white hover:bg-orange-700`}>
+              Add a Story from here
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mt-4">
+            <CardRow>
+              {stories.map((story) => (
+                <StoryCard
+                  key={story._id}
+                  story={story}
+                  note={`${story.distanceKm < 1 ? 'Under 1 km' : `${Math.round(story.distanceKm)} km`} away`}
+                />
+              ))}
+            </CardRow>
+          </div>
+          <Link to={mapHref} className={`${pillLink} mt-3 border border-stone-300 bg-white hover:border-stone-500`}>
+            See them on the map
+          </Link>
+        </>
+      )}
+    </section>
+  )
+}
+
+// When the text isn't a place we can find, look for stories that mention it instead.
+function TextResults({ text, onClear }: { text: string; onClear: () => void }) {
+  const stories = useQuery(api.discover.search, { text })
+  return (
+    <section aria-live="polite" aria-label={`Stories matching ${text}`} className="mt-8">
+      <ResultsHeader
+        title={stories?.length ? `Stories mentioning “${text}”` : `No place called “${text}”`}
+        subtitle={stories?.length ? `We couldn't find a place called “${text}”, but these stories mention it.` : undefined}
+        onClear={onClear}
+      />
+      {stories === undefined ? (
+        <p className="mt-4 text-stone-500">Searching stories…</p>
+      ) : stories.length === 0 ? (
+        <div className={emptyBox}>
+          <p className="text-stone-700">
+            We couldn't find “{text}” as a place or in any story. Check the spelling, try a nearby town, or browse the map.
+          </p>
+          <Link to="/map" className={`${pillLink} mt-4 border border-stone-300 hover:border-stone-500`}>
+            Explore the map
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <CardRow>
+            {stories.map((story) => (
+              <StoryCard key={story._id} story={story} />
+            ))}
+          </CardRow>
+        </div>
+      )}
     </section>
   )
 }

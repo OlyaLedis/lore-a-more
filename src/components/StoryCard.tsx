@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Id } from '../../convex/_generated/dataModel'
 import { categoryLabel, themeLabel, type AgeRange, type StoryCategory, type StoryTheme } from '../../convex/taxonomy'
-import { byline } from '../format'
 import { PinIcon } from './Icons'
 
 export type CardStory = {
@@ -13,9 +12,52 @@ export type CardStory = {
   ageRange?: AgeRange
   themes?: StoryTheme[]
   place?: string
+  // The cover picture and its framing, or null/absent for the colorful category cover.
+  cover?: CardCover | null
 }
 
-// Each category has its own cover colors. Stories from before categories get a neutral cover.
+// A cover picture as cards show it. `scale` and `x`/`y` are display settings, never a crop.
+export type CardCover = { url: string; scale: number; x: number; y: number }
+
+// The age symbol below each cover: a colorful shape showing only "6+", "8+", or "10+".
+const ageColors: Record<AgeRange, string> = {
+  '6+': 'bg-emerald-700',
+  '8+': 'bg-sky-700',
+  '10+': 'bg-violet-700',
+}
+
+export function AgeSymbol({ age, large = false }: { age: AgeRange; large?: boolean }) {
+  return (
+    <span
+      role="img"
+      aria-label={`For ${age.replace('+', '')} and up`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-[0.8rem_0.8rem_0.8rem_0.25rem] font-extrabold tabular-nums text-white ${
+        ageColors[age]
+      } ${large ? 'h-8 min-w-11 px-2.5 text-base' : 'h-6 min-w-9 px-2 text-[13px]'}`}
+    >
+      {age}
+    </span>
+  )
+}
+
+// "Castello di Monreale, Sàrdara/Sardara, Italy" → "Castello di Monreale". Cards stay one line; the
+// full place is on the story page and in the card's tooltip.
+function shortPlace(place: string) {
+  const [first, second] = place.split(',').map((p) => p.trim())
+  return second && `${first}, ${second}`.length <= 18 ? `${first}, ${second}` : first
+}
+
+function cardDescription(story: CardStory, note?: string) {
+  return [story.title, story.ageRange && `for ${story.ageRange.replace('+', '')} and up`, story.place, note]
+    .filter(Boolean)
+    .join(', ')
+}
+
+const cardFocus =
+  'focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-orange-600'
+
+// Each category has its own cover colors, used when a story has no illustration. Stories from before
+// categories get a neutral cover.
 const covers: Record<StoryCategory | 'none', string> = {
   local_legend: 'from-indigo-700 via-violet-600 to-fuchsia-500',
   personal: 'from-rose-600 via-orange-500 to-amber-400',
@@ -24,96 +66,122 @@ const covers: Record<StoryCategory | 'none', string> = {
   none: 'from-stone-600 via-stone-500 to-stone-400',
 }
 
-export function AgeBadge({ age, onCover = false }: { age?: AgeRange; onCover?: boolean }) {
-  if (!age) return null
-  return (
-    <span
-      title={`Suitable for ages ${age}`}
-      className={`rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums ${
-        onCover ? 'bg-white/90 text-stone-900' : 'border border-stone-300 text-stone-700'
-      }`}
-    >
-      {age}
-    </span>
-  )
-}
-
-function Cover({ story, size }: { story: CardStory; size: 'card' | 'hero' }) {
-  return (
-    <div
-      className={`relative flex flex-col justify-between overflow-hidden bg-linear-to-br text-white ${
-        covers[story.category ?? 'none']
-      } ${size === 'hero' ? 'min-h-56 rounded-3xl p-6 sm:min-h-64 sm:p-8' : 'aspect-square rounded-2xl p-3'}`}
-    >
-      {/* A soft circle for depth; purely decorative. */}
-      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/15" />
-      <div className="relative flex items-start justify-between gap-2">
-        <span className={`font-medium uppercase tracking-wide text-white/85 ${size === 'hero' ? 'text-xs' : 'text-[10px]'}`}>
-          {story.category ? categoryLabel(story.category) : 'Story'}
-        </span>
-        <AgeBadge age={story.ageRange} onCover />
+// The square cover, the same everywhere a story appears. It never carries text: the title,
+// category, and age sit below it. A picture sits in a white paper frame with a 9% margin, fitted
+// whole (never cropped), then scaled and moved by the author's settings and kept inside the
+// rounded square. Without a picture, the category's colors and a soft circle.
+export function StoryCover({
+  category,
+  cover,
+  className = '',
+}: {
+  category?: StoryCategory
+  cover?: CardCover | null
+  className?: string
+}) {
+  if (cover) {
+    return (
+      <div className={`relative aspect-square overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200 ${className}`}>
+        <div className="absolute inset-[9%]">
+          <img
+            src={cover.url}
+            alt=""
+            loading="lazy"
+            draggable={false}
+            className="absolute inset-0 h-full w-full object-contain"
+            style={{ transform: `translate(${cover.x * 100}%, ${cover.y * 100}%) scale(${cover.scale})` }}
+          />
+        </div>
       </div>
-      <p
-        className={`relative font-serif font-semibold leading-tight ${
-          size === 'hero' ? 'text-3xl sm:text-4xl' : 'line-clamp-4 text-lg'
-        }`}
-      >
-        {story.title}
-      </p>
+    )
+  }
+  return (
+    <div className={`relative aspect-square overflow-hidden rounded-2xl bg-linear-to-br ${covers[category ?? 'none']} ${className}`}>
+      {/* A soft circle for depth; purely decorative. */}
+      <div className="pointer-events-none absolute -right-[22%] -top-[22%] h-[85%] w-[85%] rounded-full bg-white/15" />
     </div>
   )
 }
 
-// A story in a horizontal shelf or a grid.
+// The card's content, without the link: used by StoryCard and by previews in the story form.
+// Every line has a fixed height, so cards in a row line up however long their titles or places are.
+export function StoryCardBody({ story, note }: { story: CardStory; note?: string }) {
+  return (
+    <>
+      <StoryCover
+        category={story.category}
+        cover={story.cover}
+        className="transition group-hover:brightness-105 group-hover:ring-stone-400"
+      />
+      <p className="mt-3 line-clamp-2 h-[2.6em] text-[17px] font-semibold leading-[1.3] tracking-tight text-stone-900 group-hover:underline sm:text-lg">
+        {story.title}
+      </p>
+      <div className="mt-1.5 flex h-6 items-center gap-2">
+        {story.ageRange && <AgeSymbol age={story.ageRange} />}
+        {story.place && (
+          <span className="flex min-w-0 items-center gap-1 text-[13px] text-stone-500">
+            <PinIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{shortPlace(story.place)}</span>
+          </span>
+        )}
+      </div>
+      {note && <p className="mt-1 h-5 truncate text-[13px] font-medium leading-5 text-orange-700">{note}</p>}
+    </>
+  )
+}
+
+// A story wherever stories are listed. Small in sideways rows; `wide` fills a grid cell.
 export function StoryCard({ story, note, wide = false }: { story: CardStory; note?: string; wide?: boolean }) {
   return (
     <Link
       to={`/story/${story._id}`}
-      className={`group block shrink-0 snap-start rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-900 ${
-        wide ? 'w-full' : 'w-40 sm:w-48'
-      }`}
+      aria-label={cardDescription(story, note)}
+      title={story.place ? `${story.title} · ${story.place}` : story.title}
+      className={`group block shrink-0 snap-start rounded-2xl ${cardFocus} ${wide ? 'w-full' : 'w-40 sm:w-48'}`}
     >
-      <div className="transition group-hover:brightness-110">
-        <Cover story={story} size="card" />
-      </div>
-      <p className="mt-2 line-clamp-1 text-sm font-medium group-hover:underline">{story.title}</p>
-      <p className="line-clamp-1 text-sm text-stone-500">
-        {note ?? (story.place ? <PlaceText place={story.place} /> : byline(story.author))}
-      </p>
+      <StoryCardBody story={story} note={note} />
     </Link>
   )
 }
 
-function PlaceText({ place }: { place: string }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <PinIcon className="h-3.5 w-3.5 shrink-0" />
-      {place}
-    </span>
-  )
-}
-
-// The big first card on Home.
-export function HeroStoryCard({ story, eyebrow, detail }: { story: CardStory; eyebrow: string; detail?: string }) {
+// One story given the room of a whole section: a large cover with a large title beside it on wider
+// screens, or above it on a phone.
+export function FeaturedStoryCard({ story, note }: { story: CardStory; note?: string }) {
   return (
     <Link
       to={`/story/${story._id}`}
-      className="group block rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-900"
+      aria-label={cardDescription(story, note)}
+      className={`group flex flex-col gap-4 rounded-3xl sm:flex-row sm:items-center sm:gap-8 ${cardFocus}`}
     >
-      <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-orange-700">{eyebrow}</p>
-      <div className="transition group-hover:brightness-110">
-        <Cover story={story} size="hero" />
+      <StoryCover
+        category={story.category}
+        cover={story.cover}
+        className="w-full shrink-0 transition group-hover:brightness-105 sm:w-72 md:w-80"
+      />
+      <div className="min-w-0">
+        {note && <p className="text-sm font-semibold text-orange-700">{note}</p>}
+        <p className="mt-1 line-clamp-3 text-2xl font-bold leading-tight tracking-tight text-stone-900 group-hover:underline sm:text-3xl">
+          {story.title}
+        </p>
+        <div className="mt-3 flex items-center gap-3">
+          {story.ageRange && <AgeSymbol age={story.ageRange} large />}
+          {story.place && (
+            <span className="flex min-w-0 items-center gap-1.5 text-stone-600">
+              <PinIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{story.place}</span>
+            </span>
+          )}
+        </div>
+        <span className="mt-5 inline-flex rounded-full bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white group-hover:bg-stone-700">
+          Read the story
+        </span>
       </div>
-      <p className="mt-3 text-stone-600">
-        {story.place && <PlaceText place={story.place} />}
-        {detail && <span className="text-stone-500"> · {detail}</span>}
-      </p>
     </Link>
   )
 }
 
-// A titled section of cards that scrolls sideways.
-export function Shelf({
+// A Home section: heading, optional subtitle and "See all", then its stories in any layout.
+export function Section({
   title,
   subtitle,
   seeAll,
@@ -125,7 +193,7 @@ export function Shelf({
   children: ReactNode
 }) {
   return (
-    <section className="mt-10" aria-label={title}>
+    <section className="mt-12" aria-label={title}>
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
         {seeAll && (
@@ -135,15 +203,39 @@ export function Shelf({
         )}
       </div>
       {subtitle && <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p>}
-      <div className="scrollbar-none -mx-4 mt-3 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
-        {children}
-      </div>
+      <div className="mt-4">{children}</div>
     </section>
   )
 }
 
+// Small cards in a row that scrolls sideways. The row sits inside the page gutter (no negative
+// margins), so the first card, its caption, and the snap points all start on the page's left edge.
+export function CardRow({ children }: { children: ReactNode }) {
+  return <div className="scrollbar-none flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">{children}</div>
+}
+
+// A titled row of small cards.
+export function Shelf({ children, ...section }: Omit<Parameters<typeof Section>[0], 'children'> & { children: ReactNode }) {
+  return (
+    <Section {...section}>
+      <CardRow>{children}</CardRow>
+    </Section>
+  )
+}
+
+// Two larger cards side by side.
+export function TwoCardGrid({ stories }: { stories: CardStory[] }) {
+  return (
+    <div className="grid max-w-xl grid-cols-2 gap-4 sm:gap-6">
+      {stories.slice(0, 2).map((story) => (
+        <StoryCard key={story._id} story={story} wide />
+      ))}
+    </div>
+  )
+}
+
 // Category, age, and themes as links into Search.
-export function StoryTags({ story }: { story: CardStory }) {
+export function StoryTags({ story }: { story: Pick<CardStory, 'category' | 'ageRange' | 'themes'> }) {
   const chip = 'rounded-full border border-stone-300 px-3 py-1 text-sm text-stone-700 hover:border-stone-900'
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -153,8 +245,8 @@ export function StoryTags({ story }: { story: CardStory }) {
         </Link>
       )}
       {story.ageRange && (
-        <Link to={`/search?age=${encodeURIComponent(story.ageRange)}`} className={chip}>
-          Ages {story.ageRange}
+        <Link to={`/search?age=${encodeURIComponent(story.ageRange)}`} className="rounded-full hover:opacity-90">
+          <AgeSymbol age={story.ageRange} />
         </Link>
       )}
       {story.themes?.map((theme) => (

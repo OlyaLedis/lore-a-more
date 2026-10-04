@@ -4,6 +4,31 @@ const KEY = import.meta.env.VITE_MAPTILER_KEY as string | undefined
 
 export const geocodingEnabled = Boolean(KEY)
 
+// Every MapTiler place type. MapTiler leaves out points of interest (`poi`: castles, caves, peaks,
+// churches…) unless asked, so we list its defaults plus `poi` rather than searching POIs only.
+// https://docs.maptiler.com/guides/location-services/geocoding-search/place-types-values/
+const SEARCH_TYPES = [
+  'continental_marine',
+  'country',
+  'major_landform',
+  'region',
+  'subregion',
+  'county',
+  'joint_municipality',
+  'joint_submunicipality',
+  'municipality',
+  'municipal_district',
+  'locality',
+  'neighbourhood',
+  'place',
+  'postal_code',
+  'address',
+  'road',
+  'poi',
+].join(',')
+
+const GENERIC_CATEGORIES = new Set(['attraction', 'building', 'regional', 'tourism'])
+
 // Results of these types are a specific spot. Everything else (towns, regions, roads…) covers an area.
 const POINT_TYPES = new Set(['poi', 'address'])
 
@@ -38,7 +63,8 @@ export async function searchPlaces(query: string, signal: AbortSignal): Promise<
   const url = new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json`)
   url.searchParams.set('key', KEY)
   url.searchParams.set('autocomplete', 'true')
-  url.searchParams.set('limit', '6')
+  url.searchParams.set('limit', '8')
+  url.searchParams.set('types', SEARCH_TYPES)
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`Place search failed (${res.status})`)
   const data = (await res.json()) as { features?: Feature[] }
@@ -50,7 +76,10 @@ function toPlace(f: Feature): PlaceResult {
   const context = f.place_name.startsWith(f.text)
     ? f.place_name.slice(f.text.length).replace(/^,\s*/, '')
     : f.place_name
-  const kind = f.properties?.categories?.[0] ?? f.place_type_name?.[0] ?? f.place_type[0] ?? ''
+  // MapTiler often lists a generic category first ("attraction, castle"); prefer the specific one.
+  const categories = f.properties?.categories ?? []
+  const specific = categories.find((c) => !GENERIC_CATEGORIES.has(c)) ?? categories[0]
+  const kind = specific ?? f.place_type_name?.[0] ?? f.place_type[0] ?? ''
   return {
     id: f.id,
     name: f.text,
