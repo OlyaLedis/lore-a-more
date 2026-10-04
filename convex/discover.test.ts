@@ -209,3 +209,18 @@ describe("finding stories by place on Home", () => {
     expect(await ids(0)).toEqual([near]);
   });
 });
+
+describe("stories for a selected place", () => {
+  test("can return more than a shelf, and only one category", async () => {
+    const users = await setupUsers();
+    const legends = [];
+    for (let i = 0; i < 14; i++) legends.push(await publish(users, { category: "local_legend", location: lisbon }));
+    const folktale = await publish(users, { category: "folktale", location: lisbon });
+
+    expect(await users.t.query(api.discover.nearby, { here: inLisbon })).toHaveLength(12);
+    expect(await users.t.query(api.discover.nearby, { here: inLisbon, limit: 100 })).toHaveLength(15);
+    const onlyFolktales = await users.t.query(api.discover.nearby, { here: inLisbon, limit: 100, category: "folktale" });
+    expect(onlyFolktales.map((s) => s._id)).toEqual([folktale]);
+    expect(await users.t.query(api.discover.nearby, { here: inLisbon, limit: 1000 })).toHaveLength(15);
+  });
+});

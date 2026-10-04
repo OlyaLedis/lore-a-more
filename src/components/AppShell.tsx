@@ -1,7 +1,8 @@
-import { useQuery } from 'convex/react'
+import { useConvexAuth, useQuery } from 'convex/react'
 import type { ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
+import { useSelectedPlace } from '../selectedPlace'
 import { HomeIcon, LibraryIcon, MapIcon, PlusIcon, SearchIcon } from './Icons'
 
 const tabs = [
@@ -10,19 +11,32 @@ const tabs = [
   { to: '/library', label: 'Library', Icon: LibraryIcon, end: false },
 ]
 
+// A signed-out visitor who hasn't chosen a place yet sees a clean opening screen: just the logo and
+// Sign In, no tabs and no bottom bar.
+function useOpeningScreen() {
+  const { isLoading, isAuthenticated } = useConvexAuth()
+  const { place } = useSelectedPlace()
+  const { pathname } = useLocation()
+  return pathname === '/' && !place && !isLoading && !isAuthenticated
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const opening = useOpeningScreen()
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900">
-      <TopBar />
+      <TopBar opening={opening} />
       {/* Bottom padding keeps content clear of the floating tab bar on phones. */}
-      <main className="mx-auto max-w-5xl px-4 pb-32 pt-6 sm:px-6 md:pb-16 md:pt-10">{children}</main>
-      <BottomBar />
+      <main className={`mx-auto max-w-5xl px-4 pt-6 sm:px-6 md:pb-16 md:pt-10 ${opening ? 'pb-8' : 'pb-32'}`}>{children}</main>
+      {!opening && <BottomBar />}
     </div>
   )
 }
 
-function TopBar() {
+function TopBar({ opening }: { opening: boolean }) {
   const me = useQuery(api.users.me)
+  const location = useLocation()
+  // Signing in returns here, including any query string.
+  const here = location.pathname + location.search
   return (
     <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-stone-50/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -30,7 +44,7 @@ function TopBar() {
           Story<span className="text-orange-600">Place</span>
         </Link>
 
-        <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+        <nav aria-label="Main" className={opening ? 'hidden' : 'hidden items-center gap-1 md:flex'}>
           {[...tabs, { to: '/search', label: 'Search', Icon: SearchIcon, end: false }].map(({ to, label, end }) => (
             <NavLink
               key={to}
@@ -60,20 +74,28 @@ function TopBar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          {/* A quiet secondary action: visitors mainly come to read the stories of a region. */}
-          <Link
-            to="/write"
-            className="flex items-center gap-1 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:border-stone-500 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 sm:text-sm"
-          >
-            <PlusIcon className="h-3.5 w-3.5" />
-            Add a Story
-          </Link>
+          {/* Signed in only: a quiet secondary action, since visitors mainly come to read. */}
+          {me && (
+            <Link
+              to="/write"
+              className="flex items-center gap-1 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:border-stone-500 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 sm:text-sm"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              Add a Story
+            </Link>
+          )}
           {me === undefined ? (
             <span className="h-9 w-9" />
           ) : me === null ? (
-            <Link to="/signin" className="text-sm font-medium text-stone-600 hover:text-stone-900">
-              Sign in
-            </Link>
+            location.pathname === '/signin' ? null : (
+              <Link
+                to="/signin"
+                state={{ from: here }}
+                className="rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
+              >
+                Sign In
+              </Link>
+            )
           ) : (
             <NavLink
               to="/account"

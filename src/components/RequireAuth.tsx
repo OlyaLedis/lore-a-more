@@ -9,7 +9,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (isLoading) return <p className="text-stone-500">Loading…</p>
   if (!isAuthenticated) {
-    return <Navigate to="/signin" state={{ from: location.pathname }} replace />
+    // Back to exactly where they were going after signing in, e.g. Add a Story.
+    return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />
   }
   return children
 }

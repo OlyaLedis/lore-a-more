@@ -1,7 +1,7 @@
 import { useConvexAuth, useMutation, useQuery } from 'convex/react'
 import { ConvexError } from 'convex/values'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { useHere } from '../here'
@@ -17,12 +17,13 @@ export function ReaderActions({ storyId, hasPlace }: { storyId: Id<'stories'>; h
   const setSaved = useMutation(api.library.setSaved)
   const setVisited = useMutation(api.library.setVisited)
   const here = useHere()
+  const location = useLocation()
   const [error, setError] = useState<string | null>(null)
 
   if (!isAuthenticated) {
     return (
       <p className="text-sm text-stone-500">
-        <Link to="/signin" className="font-medium text-stone-900 underline">
+        <Link to="/signin" state={{ from: location.pathname }} className="font-medium text-stone-900 underline">
           Sign in
         </Link>{' '}
         to save stories and keep track of places you've been.

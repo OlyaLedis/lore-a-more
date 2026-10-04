@@ -24,6 +24,7 @@ const SEARCH_RESULTS = 50;
 const MAX_RADIUS_KM = 300;
 const KM_PER_DEG_LAT = 111;
 const PLACE_SUGGESTIONS = 5;
+const MAX_NEARBY = 100;
 
 const latLng = v.object({ lat: v.number(), lng: v.number() });
 
@@ -116,11 +117,19 @@ export const home = query({
 // Stories Near You, or near a place the reader searched for. `here` is used only for this query and
 // never stored. `radiusKm` defaults to NEARBY_KM and is capped at MAX_RADIUS_KM.
 export const nearby = query({
-  args: { here: latLng, radiusKm: v.optional(v.number()) },
-  handler: async (ctx, { here, radiusKm }) => {
+  args: {
+    here: latLng,
+    radiusKm: v.optional(v.number()),
+    // How many to return (default SHELF_SIZE, at most MAX_NEARBY), optionally only one category.
+    limit: v.optional(v.number()),
+    category: v.optional(storyCategory),
+  },
+  handler: async (ctx, { here, radiusKm, limit, category }) => {
+    const count = Math.min(Math.max(Math.floor(limit ?? SHELF_SIZE), 1), MAX_NEARBY);
     return await Promise.all(
       (await nearbyStories(ctx, here, radiusKm))
-        .slice(0, SHELF_SIZE)
+        .filter(({ story }) => !category || story.category === category)
+        .slice(0, count)
         .map(async ({ story, km }) => ({ ...(await toCard(ctx, story)), distanceKm: Math.round(km * 10) / 10 })),
     );
   },

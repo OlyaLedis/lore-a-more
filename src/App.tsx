@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Library from './pages/Library'
 import MapPage from './pages/MapPage'
 import MyStories from './pages/MyStories'
+import PlaceAll from './pages/PlaceAll'
 import ReadPage from './pages/ReadPage'
 import Review from './pages/Review'
 import Search from './pages/Search'
@@ -26,6 +27,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/new" element={<Feed />} />
+        <Route path="/place/:category" element={<PlaceAll />} />
         <Route path="/library" element={<Library />} />
         <Route path="/search" element={<Search />} />
         <Route path="/map" element={<MapPage />} />

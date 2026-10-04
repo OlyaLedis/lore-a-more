@@ -1,324 +1,236 @@
 import { useConvexAuth, useQuery } from 'convex/react'
-import { useEffect, useRef, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { NEARBY_KM } from '../../convex/geo'
-import { FindStoriesBanner, type BannerStatus, type FindTarget } from '../components/FindStoriesBanner'
-import { NewIcon, PlusIcon, SearchIcon } from '../components/Icons'
-import { CardRow, FeaturedStoryCard, Section, Shelf, StoryCard, TwoCardGrid } from '../components/StoryCard'
+import { CATEGORIES } from '../../convex/taxonomy'
+import { LocateIcon, PinIcon } from '../components/Icons'
+import { PlaceFinder, type FindTarget } from '../components/PlaceFinder'
+import { CardRow, FeaturedStoryCard, Section, StoryCard } from '../components/StoryCard'
 import { placeNameAt } from '../geocoding'
 import { useHere } from '../here'
+import { placeHeading, useSelectedPlace, type SelectedPlace } from '../selectedPlace'
 
-// Curated discovery, not the full list: each section appears only when it has stories to show.
+// How many stories each section shows before "See all".
+const PER_SECTION = 4
+
+// Home starts by asking where to discover stories; story cards appear only once a place is chosen.
 export default function Home() {
-  const { isAuthenticated } = useConvexAuth()
-  const here = useHere()
-  const position = here.position ?? undefined
-
-  const home = useQuery(api.discover.home)
-  const topPicks = useQuery(api.discover.topPicks, { here: position })
-  const recentlyPlayed = useQuery(api.library.recentlyPlayed, isAuthenticated ? {} : 'skip')
-  const placesVisited = useQuery(api.library.placesVisited, isAuthenticated ? {} : 'skip')
-
-  const catalogEmpty = home !== undefined && home.seasonal.length === 0 && home.categories.length === 0
-
-  return (
-    <div>
-      <FindStories />
-
-      {/* Page rhythm: one featured story, rows of small cards for your history and the season,
-          then two-card grids for each category. */}
-      {topPicks && topPicks.length > 0 && (
-        <Section title="Top Picks for You">
-          <FeaturedStoryCard story={topPicks[0]} note={topPicks[0].reason} />
-        </Section>
-      )}
-
-      {placesVisited && placesVisited.length > 0 && (
-        <Shelf title="Places You’ve Been" seeAll="/library">
-          {placesVisited.map((story) => (
-            <StoryCard key={story._id} story={story} />
-          ))}
-        </Shelf>
-      )}
-
-      {recentlyPlayed && recentlyPlayed.length > 0 && (
-        <Shelf title="Recently Played" seeAll="/library">
-          {recentlyPlayed.map((story) => (
-            <StoryCard key={story._id} story={story} />
-          ))}
-        </Shelf>
-      )}
-
-      {home && home.seasonal.length > 0 && (
-        <Shelf title="Seasonal Stories" subtitle="Picked by the StoryPlace team for this time of year.">
-          {home.seasonal.map((story) => (
-            <StoryCard key={story._id} story={story} />
-          ))}
-        </Shelf>
-      )}
-
-      {home?.categories.map(({ category, label, stories }) => (
-        <Section key={category} title={label} seeAll={`/search?category=${category}`}>
-          <TwoCardGrid stories={stories} />
-        </Section>
-      ))}
-
-      {home === undefined && <p className="mt-10 text-stone-500">Loading stories…</p>}
-
-      {catalogEmpty && (
-        <section className="mt-10 rounded-3xl border border-dashed border-stone-300 p-8 text-center">
-          <h2 className="font-serif text-2xl font-semibold">Stories are on their way</h2>
-          <p className="mx-auto mt-2 max-w-md text-stone-600">
-            Nothing has been published in these collections yet. Share a legend, a memory, or the story of a
-            place you know.
-          </p>
-          <Link
-            to="/write"
-            className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-orange-600 px-5 py-2.5 font-semibold text-white hover:bg-orange-700"
-          >
-            <PlusIcon className="h-4 w-4" /> Add a Story
-          </Link>
-        </section>
-      )}
-
-      <section className="mt-12 grid gap-3 sm:grid-cols-2">
-        <Link
-          to="/search"
-          className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5 hover:border-stone-400"
-        >
-          <SearchIcon className="h-7 w-7 text-orange-600" />
-          <span>
-            <span className="block font-semibold">Explore all stories</span>
-            <span className="text-sm text-stone-500">Search and filter by place, category, age, or theme.</span>
-          </span>
-        </Link>
-        <Link
-          to="/new"
-          className="flex items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5 hover:border-stone-400"
-        >
-          <NewIcon className="h-7 w-7 text-orange-600" />
-          <span>
-            <span className="block font-semibold">New stories</span>
-            <span className="text-sm text-stone-500">Everything recently published, newest first.</span>
-          </span>
-        </Link>
-      </section>
-    </div>
-  )
+  const { place } = useSelectedPlace()
+  return place ? <PlaceStories place={place} /> : <DiscoverStart />
 }
 
-type Finding =
-  | { kind: 'none' }
-  | { kind: 'place'; target: FindTarget }
-  | { kind: 'text'; text: string }
-  | { kind: 'location' }
-
-// "Eppstein, Hesse, Germany" → "Eppstein", for the heading.
+// "Eppstein, Hesse, Germany" → "Eppstein", for headings.
 function shortName(label: string) {
   return label.split(',')[0].trim()
 }
 
-// The town at the reader's position, looked up once per position. Undefined while looking.
-function useAreaName(position: { lat: number; lng: number } | null) {
-  const key = position ? `${position.lat},${position.lng}` : null
-  const [found, setFound] = useState<{ key: string; name: string | null } | null>(null)
-  useEffect(() => {
-    if (!position || !key) return
-    const controller = new AbortController()
-    placeNameAt(position, controller.signal)
-      .then((name) => setFound({ key, name }))
-      .catch(() => !controller.signal.aborted && setFound({ key, name: null }))
-    return () => controller.abort()
-    // position is identified by key
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
-  return found?.key === key ? found.name : undefined
-}
+type Message = { tone: 'info' | 'error'; content: ReactNode } | null
 
-// The page heading, the search row, and whatever it found, shown right below it. The heading names
-// the place once one is known: chosen in search, or found with Find me.
-function FindStories() {
+// The opening screen: a heading, a place search, and Use My Location, centered. Nothing else.
+function DiscoverStart() {
+  const { choose } = useSelectedPlace()
   const here = useHere()
-  const [finding, setFinding] = useState<Finding>({ kind: 'none' })
-  const resultsRef = useRef<HTMLDivElement>(null)
+  const statusId = useId()
+  const [locating, setLocating] = useState(false)
+  const [message, setMessage] = useState<Message>(null)
 
-  // Bring the results into view, which matters on a phone where they start below the fold.
-  const showResults = () =>
-    setTimeout(() => {
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      resultsRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
-    }, 50)
+  function onFind(target: FindTarget) {
+    setMessage(null)
+    choose({ source: 'search', label: shortName(target.label), center: target.center, radiusKm: target.radiusKm })
+  }
 
-  const usingLocation = finding.kind === 'location'
-  const located = usingLocation && here.status === 'granted' ? here.position : null
-  const areaName = useAreaName(located)
-  const locationTarget: FindTarget | null = located
-    ? { label: areaName ?? 'you', center: located, radiusKm: NEARBY_KM }
-    : null
-
-  const place = finding.kind === 'place' ? shortName(finding.target.label) : locationTarget ? shortName(locationTarget.label) : null
-  const heading = place ? `Local stories around ${place}` : 'Discover local stories'
-
-  let status: BannerStatus = null
-  if (usingLocation && here.status === 'denied') {
-    status = {
+  function onNoPlace(text: string) {
+    setMessage({
       tone: 'error',
-      text: "Location access is turned off for StoryPlace, so we can't look around you. You can allow it in your browser's site settings, or type a place above.",
+      content: (
+        <>
+          We couldn’t find “{text}” as a place. Check the spelling or try a nearby town, or{' '}
+          <Link to={`/search?q=${encodeURIComponent(text)}`} className="font-semibold underline">
+            search stories that mention it
+          </Link>
+          .
+        </>
+      ),
+    })
+  }
+
+  // Asks for location only now, because the visitor tapped the button.
+  async function locateMe() {
+    setLocating(true)
+    setMessage({ tone: 'info', content: 'Asking your browser for your location…' })
+    const result = await here.request()
+    if ('error' in result) {
+      setLocating(false)
+      setMessage({
+        tone: 'error',
+        content:
+          result.error === 'denied'
+            ? 'Location access is turned off for StoryPlace. You can search for a place instead, or allow location in your browser’s settings.'
+            : 'We couldn’t get your location just now. Search for a place instead, or try again.',
+      })
+      return
     }
-  } else if (usingLocation && here.status === 'unavailable') {
-    status = { tone: 'error', text: "We couldn't get your location just now. Try again, or type a place above." }
-  } else if (usingLocation && here.status === 'locating') {
-    status = { tone: 'info', text: 'Asking your browser for your location…' }
+    setMessage({ tone: 'info', content: 'Finding the place you’re in…' })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 6000)
+    const name = await placeNameAt(result.position, controller.signal).catch(() => null)
+    clearTimeout(timer)
+    choose({ source: 'device', label: name ?? 'you', center: result.position, radiusKm: NEARBY_KM })
   }
 
   return (
-    <div>
-      <h1 aria-live="polite" className="mb-4 font-serif text-3xl font-bold leading-tight tracking-tight text-stone-900 sm:text-4xl">
-        {heading}
+    <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center pb-10 text-center md:min-h-[calc(100dvh-12rem)]">
+      <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-stone-900 sm:text-6xl">
+        Discover Local Stories
       </h1>
-      <FindStoriesBanner
-        onFind={(target) => {
-          setFinding({ kind: 'place', target })
-          showResults()
-        }}
-        onNoPlace={(text) => {
-          setFinding({ kind: 'text', text })
-          showResults()
-        }}
-        onUseLocation={() => {
-          setFinding({ kind: 'location' })
-          here.request()
-          showResults()
-        }}
-        locating={usingLocation && here.status === 'locating'}
-        status={status}
-      />
-      <div ref={resultsRef} className="scroll-mt-24">
-        {finding.kind === 'place' && (
-          <NearbyResults target={finding.target} onClear={() => setFinding({ kind: 'none' })} />
-        )}
-        {locationTarget && <NearbyResults target={locationTarget} onClear={() => setFinding({ kind: 'none' })} />}
-        {finding.kind === 'text' && <TextResults text={finding.text} onClear={() => setFinding({ kind: 'none' })} />}
+      <div className="mt-8 w-full max-w-xl text-left">
+        <PlaceFinder onFind={onFind} onNoPlace={onNoPlace} describedBy={statusId} />
       </div>
-    </div>
-  )
-}
-
-// `quiet` keeps the title for screen readers only, when the page heading already names the place.
-function ResultsHeader({
-  title,
-  subtitle,
-  onClear,
-  quiet = false,
-}: {
-  title: string
-  subtitle?: string
-  onClear: () => void
-  quiet?: boolean
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h2 className={quiet ? 'sr-only' : 'text-xl font-bold tracking-tight sm:text-2xl'}>{title}</h2>
-        {subtitle && <p className={quiet ? 'text-sm font-medium text-stone-600' : 'mt-0.5 text-sm text-stone-500'}>{subtitle}</p>}
-      </div>
-      <button type="button" onClick={onClear} className="shrink-0 text-sm font-medium text-stone-600 underline hover:text-stone-900">
-        Clear
+      <button
+        type="button"
+        onClick={() => void locateMe()}
+        disabled={locating}
+        className="mt-4 inline-flex h-12 items-center gap-2 rounded-full border border-stone-300 bg-white px-6 font-semibold text-stone-900 shadow-sm hover:border-stone-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
+      >
+        <LocateIcon className={`h-5 w-5 text-orange-700 ${locating ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
+        {locating ? 'Finding your location…' : 'Use My Location'}
       </button>
+      <p
+        id={statusId}
+        role={message?.tone === 'error' ? 'alert' : 'status'}
+        className={`mt-4 max-w-md text-sm empty:hidden ${message?.tone === 'error' ? 'text-red-700' : 'text-stone-600'}`}
+      >
+        {message?.content}
+      </p>
     </div>
   )
 }
 
-const emptyBox = 'mt-4 rounded-2xl border border-dashed border-stone-300 bg-white px-5 py-6'
-const pillLink = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold'
+function distanceNote(km: number) {
+  return `${km < 1 ? 'Under 1 km' : `${Math.round(km)} km`} away`
+}
 
-function NearbyResults({ target, onClear }: { target: FindTarget; onClear: () => void }) {
-  const stories = useQuery(api.discover.nearby, { here: target.center, radiusKm: target.radiusKm })
-  const where = target.label === 'you' ? 'you' : target.label
+// Stories for the chosen place: a small location state, then sections with a few cards each.
+function PlaceStories({ place }: { place: SelectedPlace }) {
+  const { clear } = useSelectedPlace()
+  const { isAuthenticated } = useConvexAuth()
+  const stories = useQuery(api.discover.nearby, { here: place.center, radiusKm: place.radiusKm, limit: 100 })
+  const heading = placeHeading(place)
+  const where = place.source === 'device' && place.label === 'you' ? 'you' : place.label
   const mapHref = `/map?${new URLSearchParams({
-    lat: String(target.center.lat),
-    lng: String(target.center.lng),
-    r: String(target.radiusKm),
-    label: target.label === 'you' ? 'your location' : target.label,
+    lat: String(place.center.lat),
+    lng: String(place.center.lng),
+    r: String(place.radiusKm),
+    label: where === 'you' ? 'your location' : where,
   })}`
 
+  const [nearest, ...rest] = stories ?? []
+  const byCategory = CATEGORIES.map(({ value, label }) => ({
+    value,
+    label,
+    stories: rest.filter((s) => s.category === value),
+  })).filter((c) => c.stories.length > 0)
+  const uncategorized = rest.filter((s) => !s.category)
+
   return (
-    <section aria-live="polite" aria-label={`Stories near ${where}`} className="mt-6">
-      <ResultsHeader
-        quiet
-        title={`Stories near ${where}`}
-        subtitle={`Within ${target.radiusKm} km${stories?.length ? ` · ${stories.length} found` : ''}`}
-        onClear={onClear}
-      />
-      {stories === undefined ? (
-        <p className="mt-4 text-stone-500">Looking for stories near {where}…</p>
-      ) : stories.length === 0 ? (
-        <div className={emptyBox}>
-          <p className="text-stone-700">
-            No published stories are connected to places within {target.radiusKm} km of {where} yet.
+    <div>
+      {/* The location state, kept small; Change location goes back to the search. */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <h1 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">{heading}</h1>
+        <span aria-hidden className="text-stone-400">
+          ·
+        </span>
+        <button
+          type="button"
+          onClick={clear}
+          className="text-sm font-semibold text-orange-700 underline-offset-2 hover:underline sm:text-base"
+        >
+          Change location
+        </button>
+      </div>
+      <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-stone-500" aria-live="polite">
+        <span>
+          {stories === undefined
+            ? 'Finding stories…'
+            : `Within ${place.radiusKm} km · ${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`}
+        </span>
+        {stories && stories.length > 0 && (
+          <Link to={mapHref} className="inline-flex items-center gap-1 font-medium text-stone-700 hover:underline">
+            <PinIcon className="h-3.5 w-3.5" /> Show on map
+          </Link>
+        )}
+      </p>
+
+      {stories === undefined ? null : stories.length === 0 ? (
+        <div className="mt-8 rounded-3xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
+          <h2 className="font-serif text-2xl font-semibold">
+            No stories {place.source === 'device' ? 'near' : 'in'} {where} yet
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-stone-600">
+            Nobody has shared a story connected to this area so far. Try another place, or browse the whole map.
           </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link to="/map" className={`${pillLink} border border-stone-300 hover:border-stone-500`}>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={clear}
+              className="rounded-full bg-stone-900 px-5 py-2.5 font-semibold text-white hover:bg-stone-700"
+            >
+              Search another place
+            </button>
+            <Link to="/map" className="rounded-full border border-stone-300 bg-white px-5 py-2.5 font-semibold hover:border-stone-500">
               Explore the map
             </Link>
-            <Link to="/write" className={`${pillLink} bg-orange-600 text-white hover:bg-orange-700`}>
-              Add a Story from here
-            </Link>
+            {isAuthenticated && (
+              <Link to="/write" className="rounded-full border border-stone-300 bg-white px-5 py-2.5 font-semibold hover:border-stone-500">
+                Add a Story
+              </Link>
+            )}
           </div>
         </div>
       ) : (
         <>
-          <div className="mt-4">
-            <CardRow>
-              {stories.map((story) => (
-                <StoryCard
-                  key={story._id}
-                  story={story}
-                  note={`${story.distanceKm < 1 ? 'Under 1 km' : `${Math.round(story.distanceKm)} km`} away`}
-                />
-              ))}
-            </CardRow>
-          </div>
-          <Link to={mapHref} className={`${pillLink} mt-3 border border-stone-300 bg-white hover:border-stone-500`}>
-            See them on the map
-          </Link>
+          <Section
+            title={
+              where === 'you'
+                ? 'Closest to you'
+                : place.source === 'search' && place.radiusKm > 60
+                  ? `Closest to the centre of ${where}`
+                  : `Closest to ${where}`
+            }
+          >
+            <FeaturedStoryCard story={nearest} note={distanceNote(nearest.distanceKm)} />
+          </Section>
+
+          {byCategory.map(({ value, label, stories: inCategory }) => (
+            <Section key={value} title={label} seeAll={inCategory.length > PER_SECTION ? `/place/${value}` : undefined}>
+              <CardRow>
+                {inCategory.slice(0, PER_SECTION).map((story) => (
+                  <StoryCard key={story._id} story={story} note={distanceNote(story.distanceKm)} />
+                ))}
+              </CardRow>
+            </Section>
+          ))}
+
+          {uncategorized.length > 0 && (
+            <Section title="More stories" seeAll={uncategorized.length > PER_SECTION ? '/place/all' : undefined}>
+              <CardRow>
+                {uncategorized.slice(0, PER_SECTION).map((story) => (
+                  <StoryCard key={story._id} story={story} note={distanceNote(story.distanceKm)} />
+                ))}
+              </CardRow>
+            </Section>
+          )}
+
+          {stories.length > PER_SECTION && (
+            <p className="mt-10">
+              <Link to="/place/all" className="font-semibold text-orange-700 hover:underline">
+                See all {stories.length} stories {place.source === 'device' ? 'near' : 'in'} {where}
+              </Link>
+            </p>
+          )}
         </>
       )}
-    </section>
-  )
-}
-
-// When the text isn't a place we can find, look for stories that mention it instead.
-function TextResults({ text, onClear }: { text: string; onClear: () => void }) {
-  const stories = useQuery(api.discover.search, { text })
-  return (
-    <section aria-live="polite" aria-label={`Stories matching ${text}`} className="mt-8">
-      <ResultsHeader
-        title={stories?.length ? `Stories mentioning “${text}”` : `No place called “${text}”`}
-        subtitle={stories?.length ? `We couldn't find a place called “${text}”, but these stories mention it.` : undefined}
-        onClear={onClear}
-      />
-      {stories === undefined ? (
-        <p className="mt-4 text-stone-500">Searching stories…</p>
-      ) : stories.length === 0 ? (
-        <div className={emptyBox}>
-          <p className="text-stone-700">
-            We couldn't find “{text}” as a place or in any story. Check the spelling, try a nearby town, or browse the map.
-          </p>
-          <Link to="/map" className={`${pillLink} mt-4 border border-stone-300 hover:border-stone-500`}>
-            Explore the map
-          </Link>
-        </div>
-      ) : (
-        <div className="mt-4">
-          <CardRow>
-            {stories.map((story) => (
-              <StoryCard key={story._id} story={story} />
-            ))}
-          </CardRow>
-        </div>
-      )}
-    </section>
+    </div>
   )
 }

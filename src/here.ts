@@ -1,17 +1,24 @@
 import { createContext, useContext } from 'react'
 import type { LatLng } from '../convex/geo'
 
-// The reader's current position, shared across pages. Only requested when the reader asks
-// (or silently if they already granted permission), rounded to about 1 km, and never stored.
-export type HereStatus = 'checking' | 'prompt' | 'locating' | 'granted' | 'denied' | 'unavailable'
+// The reader's current position, shared across pages. Only ever requested when the reader taps
+// "Use My Location" (never on load or after signing in), rounded to about 1 km, and never stored.
+export type HereStatus = 'idle' | 'locating' | 'granted' | 'denied' | 'unavailable'
 
 export type Here = {
   status: HereStatus
   position: LatLng | null
-  request: () => void
+  // Asks the browser for the position. Resolves with it, or with why it isn't available.
+  request: () => Promise<HereResult>
 }
 
-export const HereContext = createContext<Here>({ status: 'unavailable', position: null, request: () => {} })
+export type HereResult = { position: LatLng } | { error: 'denied' | 'unavailable' }
+
+export const HereContext = createContext<Here>({
+  status: 'unavailable',
+  position: null,
+  request: async () => ({ error: 'unavailable' }),
+})
 
 export function useHere() {
   return useContext(HereContext)

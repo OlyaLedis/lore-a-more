@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import 'leaflet/dist/leaflet.css'
 import App from './App.tsx'
 import { HereProvider } from './components/HereProvider'
+import { SelectedPlaceProvider } from './components/SelectedPlaceProvider'
 import './index.css'
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string)
@@ -14,9 +15,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConvexAuthProvider client={convex}>
       <HereProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <SelectedPlaceProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </SelectedPlaceProvider>
       </HereProvider>
     </ConvexAuthProvider>
   </StrictMode>,

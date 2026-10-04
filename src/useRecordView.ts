@@ -11,7 +11,7 @@ export function useRecordView(story: { _id: Id<'stories'>; status: string } | nu
   const recordView = useMutation(api.library.recordView)
   const here = useHere()
   const recorded = useRef<string | null>(null)
-  const settled = here.status !== 'checking' && here.status !== 'locating'
+  const settled = here.status !== 'locating'
   const storyId = story?._id
   const approved = story?.status === 'approved'
 

@@ -46,19 +46,17 @@ cover this lifecycle.
 **Discovery and categories.** New stories and edits require `category`, `ageRange`, and `source`, and
 can have up to 3 `themes`. All four are listed in `convex/taxonomy.ts`, which the frontend imports too.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
-the edit form asks the author instead. Home's heading is dynamic: "Discover local stories" until a place is known, then "Local stories around
-<place>". The place is the first part of the chosen search result, or the town at the reader's position
-after Find me, found by `placeNameAt` (MapTiler reverse geocoding) and falling back to "you". Below it is
-`FindStoriesBanner`, a compact row with a white "Search a city, landmark, or place…" field (Enter, or the
-arrow button that appears once there's text) and a round "Find me" location button. The reader types a place (suggestions come from
-`discover.placeSuggestions`, which matches authors' saved place names, plus MapTiler) or taps Find me
-(asks for location permission only then). Results come from `discover.nearby` with a radius sized to
-the place, and link to `/map?lat&lng&r&label`, which focuses the Map tab. Text that isn't a place falls
-back to `discover.search`. The rest of Home is built from `discover.home`
-(Seasonal plus category shelves), `discover.nearby`, `discover.topPicks` (rule-based, each pick carries
-its `reason`; empty with no signals, never random), and `library.*`. Search uses the `search_text`
-index on `stories.searchText`, which `stories.ts` keeps in sync on every content write. After deploying
-to a deployment with existing stories, run `npx convex run stories:backfillSearchText` once.
+the edit form asks the author instead. Home has two states. With no place chosen it shows only a centred "Discover Local Stories" heading,
+a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
+just the logo and Sign In (`useOpeningScreen` in `AppShell`). Choosing a place (search) or Use My
+Location (device) sets the `SelectedPlace` (`src/selectedPlace.ts`, kept in `sessionStorage` for the tab so
+it survives sign-in). Home then shows "Stories in X · Change location" (or "Stories near X" for the device,
+whose name comes from `placeNameAt` reverse geocoding), a featured nearest story, and up to 4 stories per
+category, with See all at `/place/:category` (`PlaceAll`). All of this comes from `discover.nearby`
+(`limit` up to 100, optional `category`). A searched place and the device location are separate, and
+neither replaces the other. Guests can browse and read everything; Add a Story shows only when signed in,
+and `RequireAuth` / Sign In send people back to where they were (`state.from`, including the query
+string).
 
 **Scenes, illustrations, and reading mode.** `stories.scenes` (and `storyRevisions.scenes`) is an
 optional ordered list of `{ id, text, illustrations: [{ storageId, alt, credit? }] }`. `body` stays
@@ -94,8 +92,9 @@ one-line place. There's no category text, because the cover color already shows 
 `getAuthUserId(ctx)`. "Places You've Been" comes only from Mark as visited, or from opening or saving a
 story while the client sends a position within `atPlaceKm` of it. The position is sent with that action,
 used, and dropped; there's no background tracking. `src/components/HereProvider.tsx` asks for location
-only when the reader taps "Show stories near me" (or silently if already granted), and rounds it to
-about 1 km. `stories.remove` also deletes a story's rows in these tables and in `collectionEntries`.
+only when the reader taps Use My Location. It never asks on load or after sign-in, even if the browser
+already allows it. `request()` returns the position or why it failed, and the position is rounded to about
+1 km. `stories.remove` also deletes a story's rows in these tables and in `collectionEntries`.
 
 **Navigation.** `src/components/AppShell.tsx` holds the top bar (Add a Story, plus the initials avatar
 that links to `/account`) and the phone bottom bar (Home / Map / Library, plus a separate Search
