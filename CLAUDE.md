@@ -46,9 +46,13 @@ cover this lifecycle.
 **Discovery and categories.** New stories and edits require `category`, `ageRange`, and `source`, and
 can have up to 3 `themes`. All four are listed in `convex/taxonomy.ts`, which the frontend imports too.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
-the edit form asks the author instead. Home opens with `FindStoriesBanner`: the reader types a place (suggestions come from
-`discover.placeSuggestions`, which matches authors' saved place names, plus MapTiler) or taps Use my
-location (asks for permission only then). Results come from `discover.nearby` with a radius sized to
+the edit form asks the author instead. Home's heading is dynamic: "Discover local stories" until a place is known, then "Local stories around
+<place>". The place is the first part of the chosen search result, or the town at the reader's position
+after Find me, found by `placeNameAt` (MapTiler reverse geocoding) and falling back to "you". Below it is
+`FindStoriesBanner`, a compact row with a white "Search a city, landmark, or place…" field (Enter, or the
+arrow button that appears once there's text) and a round "Find me" location button. The reader types a place (suggestions come from
+`discover.placeSuggestions`, which matches authors' saved place names, plus MapTiler) or taps Find me
+(asks for location permission only then). Results come from `discover.nearby` with a radius sized to
 the place, and link to `/map?lat&lng&r&label`, which focuses the Map tab. Text that isn't a place falls
 back to `discover.search`. The rest of Home is built from `discover.home`
 (Seasonal plus category shelves), `discover.nearby`, `discover.topPicks` (rule-based, each pick carries

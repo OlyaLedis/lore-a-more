@@ -1,12 +1,12 @@
 import { useConvexAuth, useQuery } from 'convex/react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { NEARBY_KM } from '../../convex/geo'
 import { FindStoriesBanner, type BannerStatus, type FindTarget } from '../components/FindStoriesBanner'
 import { NewIcon, PlusIcon, SearchIcon } from '../components/Icons'
-import { PageHeader } from '../components/PageHeader'
 import { CardRow, FeaturedStoryCard, Section, Shelf, StoryCard, TwoCardGrid } from '../components/StoryCard'
+import { placeNameAt } from '../geocoding'
 import { useHere } from '../here'
 
 // Curated discovery, not the full list: each section appears only when it has stories to show.
@@ -24,8 +24,6 @@ export default function Home() {
 
   return (
     <div>
-      <PageHeader title="Home" />
-
       <FindStories />
 
       {/* Page rhythm: one featured story, rows of small cards for your history and the season,
@@ -116,7 +114,30 @@ type Finding =
   | { kind: 'text'; text: string }
   | { kind: 'location' }
 
-// The banner and whatever it found, shown right below it.
+// "Eppstein, Hesse, Germany" → "Eppstein", for the heading.
+function shortName(label: string) {
+  return label.split(',')[0].trim()
+}
+
+// The town at the reader's position, looked up once per position. Undefined while looking.
+function useAreaName(position: { lat: number; lng: number } | null) {
+  const key = position ? `${position.lat},${position.lng}` : null
+  const [found, setFound] = useState<{ key: string; name: string | null } | null>(null)
+  useEffect(() => {
+    if (!position || !key) return
+    const controller = new AbortController()
+    placeNameAt(position, controller.signal)
+      .then((name) => setFound({ key, name }))
+      .catch(() => !controller.signal.aborted && setFound({ key, name: null }))
+    return () => controller.abort()
+    // position is identified by key
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return found?.key === key ? found.name : undefined
+}
+
+// The page heading, the search row, and whatever it found, shown right below it. The heading names
+// the place once one is known: chosen in search, or found with Find me.
 function FindStories() {
   const here = useHere()
   const [finding, setFinding] = useState<Finding>({ kind: 'none' })
@@ -130,10 +151,14 @@ function FindStories() {
     }, 50)
 
   const usingLocation = finding.kind === 'location'
-  const locationTarget: FindTarget | null =
-    usingLocation && here.status === 'granted' && here.position
-      ? { label: 'you', center: here.position, radiusKm: NEARBY_KM }
-      : null
+  const located = usingLocation && here.status === 'granted' ? here.position : null
+  const areaName = useAreaName(located)
+  const locationTarget: FindTarget | null = located
+    ? { label: areaName ?? 'you', center: located, radiusKm: NEARBY_KM }
+    : null
+
+  const place = finding.kind === 'place' ? shortName(finding.target.label) : locationTarget ? shortName(locationTarget.label) : null
+  const heading = place ? `Local stories around ${place}` : 'Discover local stories'
 
   let status: BannerStatus = null
   if (usingLocation && here.status === 'denied') {
@@ -149,6 +174,9 @@ function FindStories() {
 
   return (
     <div>
+      <h1 aria-live="polite" className="mb-4 font-serif text-3xl font-bold leading-tight tracking-tight text-stone-900 sm:text-4xl">
+        {heading}
+      </h1>
       <FindStoriesBanner
         onFind={(target) => {
           setFinding({ kind: 'place', target })
@@ -177,12 +205,23 @@ function FindStories() {
   )
 }
 
-function ResultsHeader({ title, subtitle, onClear }: { title: string; subtitle?: string; onClear: () => void }) {
+// `quiet` keeps the title for screen readers only, when the page heading already names the place.
+function ResultsHeader({
+  title,
+  subtitle,
+  onClear,
+  quiet = false,
+}: {
+  title: string
+  subtitle?: string
+  onClear: () => void
+  quiet?: boolean
+}) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p>}
+        <h2 className={quiet ? 'sr-only' : 'text-xl font-bold tracking-tight sm:text-2xl'}>{title}</h2>
+        {subtitle && <p className={quiet ? 'text-sm font-medium text-stone-600' : 'mt-0.5 text-sm text-stone-500'}>{subtitle}</p>}
       </div>
       <button type="button" onClick={onClear} className="shrink-0 text-sm font-medium text-stone-600 underline hover:text-stone-900">
         Clear
@@ -205,8 +244,9 @@ function NearbyResults({ target, onClear }: { target: FindTarget; onClear: () =>
   })}`
 
   return (
-    <section aria-live="polite" aria-label={`Stories near ${where}`} className="mt-8">
+    <section aria-live="polite" aria-label={`Stories near ${where}`} className="mt-6">
       <ResultsHeader
+        quiet
         title={`Stories near ${where}`}
         subtitle={`Within ${target.radiusKm} km${stories?.length ? ` · ${stories.length} found` : ''}`}
         onClear={onClear}

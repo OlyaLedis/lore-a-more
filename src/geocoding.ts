@@ -97,3 +97,21 @@ function humanize(s: string) {
   const words = s.replace(/_/g, ' ').trim()
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
+
+// Reverse geocoding returns one feature per place type; prefer the town, then smaller or larger areas.
+const AREA_TYPES = ['municipality', 'municipal_district', 'locality', 'place', 'county']
+
+// The name of the town or area at a point, e.g. "Eppstein", or null if it can't be found.
+export async function placeNameAt({ lat, lng }: { lat: number; lng: number }, signal: AbortSignal) {
+  if (!KEY) return null
+  const url = new URL(`https://api.maptiler.com/geocoding/${lng},${lat}.json`)
+  url.searchParams.set('key', KEY)
+  const res = await fetch(url, { signal })
+  if (!res.ok) throw new Error(`Place lookup failed (${res.status})`)
+  const features = ((await res.json()) as { features?: Feature[] }).features ?? []
+  for (const type of AREA_TYPES) {
+    const match = features.find((f) => f.place_type.includes(type))
+    if (match) return match.text
+  }
+  return null
+}

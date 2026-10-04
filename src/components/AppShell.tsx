@@ -60,12 +60,12 @@ function TopBar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          {/* Writing a story is a separate action from "New" (newly published stories). */}
+          {/* A quiet secondary action: visitors mainly come to read the stories of a region. */}
           <Link
             to="/write"
-            className="flex items-center gap-1.5 rounded-full bg-orange-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700"
+            className="flex items-center gap-1 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-[13px] font-medium text-stone-700 hover:border-stone-500 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 sm:text-sm"
           >
-            <PlusIcon className="h-4 w-4" />
+            <PlusIcon className="h-3.5 w-3.5" />
             Add a Story
           </Link>
           {me === undefined ? (

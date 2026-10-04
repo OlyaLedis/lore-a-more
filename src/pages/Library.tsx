@@ -11,12 +11,12 @@ export default function Library() {
   const recentlyPlayed = useQuery(api.library.recentlyPlayed, isAuthenticated ? {} : 'skip')
   const placesVisited = useQuery(api.library.placesVisited, isAuthenticated ? {} : 'skip')
 
-  if (isLoading) return <PageHeader title="Library" />
+  if (isLoading) return <PageHeader title="Library" hideTitle />
 
   if (!isAuthenticated) {
     return (
       <div>
-        <PageHeader title="Library" />
+        <PageHeader title="Library" hideTitle />
         <div className="rounded-3xl border border-dashed border-stone-300 p-8 text-center">
           <h2 className="font-serif text-2xl font-semibold">Keep your stories in one place</h2>
           <p className="mx-auto mt-2 max-w-md text-stone-600">
@@ -38,6 +38,7 @@ export default function Library() {
     <div>
       <PageHeader
         title="Library"
+        hideTitle
         subtitle={
           <>
             Only you can see your library.{' '}

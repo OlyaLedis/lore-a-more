@@ -34,6 +34,7 @@ export default function MapPage() {
     <div>
       <PageHeader
         title="Map"
+        hideTitle
         subtitle={
           stories === undefined
             ? 'Loading stories…'
@@ -58,7 +59,7 @@ export default function MapPage() {
         key={focus ? `${focus.center.lat},${focus.center.lng},${focus.radiusKm}` : 'all'}
         center={focus?.center}
         zoom={focus ? zoomForRadius(focus.radiusKm) : undefined}
-        className="h-[calc(100dvh-20rem)] min-h-80 md:h-[36rem]"
+        className="h-[calc(100dvh-15rem)] min-h-80 md:h-[36rem]"
       >
         {focus && (
           <Circle

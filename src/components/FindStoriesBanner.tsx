@@ -3,7 +3,7 @@ import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from '
 import { api } from '../../convex/_generated/api'
 import { distanceKm, NEARBY_KM, type LatLng } from '../../convex/geo'
 import { geocodingEnabled, searchPlaces, type PlaceResult } from '../geocoding'
-import { LocateIcon, PinIcon, SearchIcon } from './Icons'
+import { ArrowRightIcon, LocateIcon, PinIcon, SearchIcon } from './Icons'
 
 const MIN_CHARS = 2
 const DEBOUNCE_MS = 250
@@ -170,134 +170,123 @@ export function FindStoriesBanner({
   let lastGroup: Suggestion['group'] | null = null
 
   return (
-    <section aria-labelledby={`${inputId}-heading`} className="relative rounded-3xl ring-1 ring-orange-200/70">
-      <BannerBackdrop />
-      <div className="relative p-4 sm:p-6">
-        {/* The field and buttons explain themselves; the heading is for screen readers. */}
-        <h2 id={`${inputId}-heading`} className="sr-only">
-          Find stories near a place
-        </h2>
-
-        <form role="search" onSubmit={onSubmit} className="flex max-w-3xl flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <label htmlFor={inputId} className="sr-only">
-              Place to find stories near
-            </label>
-            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" />
-            <input
-              id={inputId}
-              type="text"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={showList}
-              aria-controls={listId}
-              aria-activedescendant={showList && active >= 0 ? `${listId}-${active}` : undefined}
-              aria-describedby={statusId}
-              autoComplete="off"
-              enterKeyHint="search"
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value)
-                setOpen(true)
-                setActive(-1)
-                setError(null)
-              }}
-              onFocus={() => setOpen(true)}
-              onBlur={() => setOpen(false)}
-              onKeyDown={onKeyDown}
-              placeholder="Search a city, landmark, or place…"
-              className="h-14 w-full rounded-2xl border-0 bg-white pl-12 pr-4 text-base text-stone-900 sm:text-lg shadow-sm ring-1 ring-stone-300 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900"
-            />
-
-            {showList && (
-              <div className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-stone-200">
-                <ul id={listId} role="listbox" aria-label="Places" className="max-h-80 overflow-y-auto py-1">
-                  {suggestions.map((s, i) => {
-                    const header = s.group !== lastGroup ? s.group : null
-                    lastGroup = s.group
-                    return (
-                      <li key={s.key} role="presentation">
-                        {header && (
-                          <p role="presentation" className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-stone-400">
-                            {header === 'storyplace' ? 'On StoryPlace' : 'Places'}
-                          </p>
-                        )}
-                        <div
-                          id={`${listId}-${i}`}
-                          role="option"
-                          aria-selected={i === active}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onMouseEnter={() => setActive(i)}
-                          onClick={() => choose(s)}
-                          className={`flex cursor-pointer items-start gap-3 px-4 py-2.5 ${i === active ? 'bg-orange-50' : ''}`}
-                        >
-                          <PinIcon
-                            className={`mt-1 h-4 w-4 shrink-0 ${s.group === 'storyplace' ? 'text-orange-600' : 'text-stone-400'}`}
-                          />
-                          <span className="min-w-0">
-                            <span className="block font-medium text-stone-900">{s.name}</span>
-                            <span className="block truncate text-sm text-stone-500">{s.context}</span>
-                          </span>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-                {loadingSuggestions && <p className="px-4 py-2.5 text-sm text-stone-500">Looking for places…</p>}
-              </div>
-            )}
-          </div>
+    // One compact row: a white search field and, beside it, a "Find me" button.
+    <section aria-labelledby={`${inputId}-heading`} className="max-w-2xl">
+      <h2 id={`${inputId}-heading`} className="sr-only">
+        Find stories near a place
+      </h2>
+      <div className="flex items-center gap-2">
+        <form role="search" onSubmit={onSubmit} className="relative min-w-0 flex-1">
+          <label htmlFor={inputId} className="sr-only">
+            Place to find stories near
+          </label>
+          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500 sm:left-4" />
+          <input
+            id={inputId}
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={showList}
+            aria-controls={listId}
+            aria-activedescendant={showList && active >= 0 ? `${listId}-${active}` : undefined}
+            aria-describedby={statusId}
+            autoComplete="off"
+            enterKeyHint="search"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value)
+              setOpen(true)
+              setActive(-1)
+              setError(null)
+            }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setOpen(false)}
+            onKeyDown={onKeyDown}
+            placeholder="Search a city, landmark, or place…"
+            // Room on the right only once the arrow button shows; a smaller placeholder on phones so
+            // the whole hint fits, ending in "…" on very narrow screens.
+            className={`h-12 w-full text-ellipsis rounded-full border-0 bg-white pl-11 text-base text-stone-900 shadow-sm ring-1 ring-stone-300 placeholder:text-[15px] placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900 sm:pl-12 sm:placeholder:text-base ${
+              trimmed || finding ? 'pr-12' : 'pr-4'
+            }`}
+          />
+          {/* Same as pressing Enter. Shown once there's something to search for. */}
           <button
             type="submit"
             disabled={finding}
-            className="h-14 shrink-0 rounded-2xl bg-orange-600 px-7 text-lg font-semibold text-white shadow-sm hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
+            aria-label={finding ? 'Finding stories…' : 'Find stories'}
+            title="Find stories"
+            className={`absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-orange-600 text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
+              trimmed || finding ? '' : 'invisible'
+            }`}
           >
-            {finding ? 'Finding…' : 'Find stories'}
+            {finding ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none" />
+            ) : (
+              <ArrowRightIcon className="h-5 w-5" />
+            )}
           </button>
+
+          {showList && (
+            <div className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-stone-200">
+              <ul id={listId} role="listbox" aria-label="Places" className="max-h-80 overflow-y-auto py-1">
+                {suggestions.map((s, i) => {
+                  const header = s.group !== lastGroup ? s.group : null
+                  lastGroup = s.group
+                  return (
+                    <li key={s.key} role="presentation">
+                      {header && (
+                        <p role="presentation" className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-stone-400">
+                          {header === 'storyplace' ? 'On StoryPlace' : 'Places'}
+                        </p>
+                      )}
+                      <div
+                        id={`${listId}-${i}`}
+                        role="option"
+                        aria-selected={i === active}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setActive(i)}
+                        onClick={() => choose(s)}
+                        className={`flex cursor-pointer items-start gap-3 px-4 py-2.5 ${i === active ? 'bg-orange-50' : ''}`}
+                      >
+                        <PinIcon
+                          className={`mt-1 h-4 w-4 shrink-0 ${s.group === 'storyplace' ? 'text-orange-600' : 'text-stone-400'}`}
+                        />
+                        <span className="min-w-0">
+                          <span className="block font-medium text-stone-900">{s.name}</span>
+                          <span className="block truncate text-sm text-stone-500">{s.context}</span>
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+              {loadingSuggestions && <p className="px-4 py-2.5 text-sm text-stone-500">Looking for places…</p>}
+            </div>
+          )}
         </form>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-stone-600">or</span>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null)
-              onUseLocation()
-            }}
-            disabled={locating}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-stone-900/20 bg-white/70 px-5 font-semibold text-stone-900 hover:border-stone-900/40 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
-          >
-            <LocateIcon className="h-5 w-5 text-orange-700" />
-            {locating ? 'Finding your location…' : 'Use my location'}
-          </button>
-        </div>
-
-        <p
-          id={statusId}
-          role={message?.tone === 'error' ? 'alert' : 'status'}
-          className={`mt-3 max-w-2xl text-sm empty:hidden ${message?.tone === 'error' ? 'font-medium text-red-700' : 'text-stone-700'}`}
+        <button
+          type="button"
+          onClick={() => {
+            setError(null)
+            onUseLocation()
+          }}
+          disabled={locating}
+          aria-label={locating ? 'Finding your location…' : 'Find me'}
+          title="Find stories near me"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-orange-700 shadow-sm ring-1 ring-stone-300 hover:ring-stone-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
         >
-          {message?.text}
-        </p>
+          <LocateIcon className={`h-6 w-6 ${locating ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
+        </button>
       </div>
-    </section>
-  )
-}
 
-// Warm paper with faint contour lines and a dotted trail to a pin: a map, drawn for StoryPlace.
-function BannerBackdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl bg-linear-to-br from-orange-50 via-amber-50 to-rose-50">
-      <svg className="absolute -right-24 -top-16 h-[34rem] w-[34rem] text-orange-200 opacity-50 sm:-right-10 sm:opacity-70" viewBox="0 0 400 400" fill="none">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <path
-            key={i}
-            d={`M ${200 - 40 - i * 26} 200 C ${200 - 40 - i * 26} ${130 - i * 22}, ${250 + i * 18} ${120 - i * 24}, ${262 + i * 24} 190 S ${190 + i * 6} ${300 + i * 22}, ${200 - 40 - i * 26} 200 Z`}
-            stroke="currentColor"
-            strokeWidth="1.6"
-          />
-        ))}
-      </svg>
-    </div>
+      <p
+        id={statusId}
+        role={message?.tone === 'error' ? 'alert' : 'status'}
+        className={`mt-2 text-sm empty:hidden ${message?.tone === 'error' ? 'font-medium text-red-700' : 'text-stone-700'}`}
+      >
+        {message?.text}
+      </p>
+    </section>
   )
 }
