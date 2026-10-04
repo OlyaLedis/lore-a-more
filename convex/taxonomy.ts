@@ -10,11 +10,12 @@ export const storyCategory = v.union(
 );
 export type StoryCategory = Infer<typeof storyCategory>;
 
-export const CATEGORIES: { value: StoryCategory; label: string; hint: string }[] = [
-  { value: "local_legend", label: "Local Legends", hint: "Legends told about a particular place." },
-  { value: "personal", label: "Personal Stories", hint: "Something that happened to you or your family." },
-  { value: "place", label: "Stories of a Place", hint: "The history and life of a place." },
-  { value: "folktale", label: "Folktales & Myths", hint: "Traditional tales, myths, and fairy tales." },
+// `label` names a section of many stories; `one` names the type of a single story, e.g. on a cover tag.
+export const CATEGORIES: { value: StoryCategory; label: string; one: string; hint: string }[] = [
+  { value: "local_legend", label: "Local Legends", one: "Local Legend", hint: "Legends told about a particular place." },
+  { value: "personal", label: "Personal Stories", one: "Personal Story", hint: "Something that happened to you or your family." },
+  { value: "place", label: "Stories of a Place", one: "Story of a Place", hint: "The history and life of a place." },
+  { value: "folktale", label: "Folktales & Myths", one: "Folktale or Myth", hint: "Traditional tales, myths, and fairy tales." },
 ];
 
 export const ageRange = v.union(v.literal("6+"), v.literal("8+"), v.literal("10+"));
@@ -70,6 +71,10 @@ export const SOURCE_KINDS: { value: StorySource["kind"]; label: string; hint: st
 
 export function categoryLabel(value: StoryCategory) {
   return CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+
+export function categoryOne(value: StoryCategory) {
+  return CATEGORIES.find((c) => c.value === value)?.one ?? value;
 }
 
 export function themeLabel(value: StoryTheme) {

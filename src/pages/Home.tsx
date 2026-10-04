@@ -4,12 +4,12 @@ import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { NEARBY_KM } from '../../convex/geo'
 import { CATEGORIES } from '../../convex/taxonomy'
-import { LocateIcon, PinIcon } from '../components/Icons'
+import { LocateIcon } from '../components/Icons'
 import { PlaceFinder, type FindTarget } from '../components/PlaceFinder'
 import { CardRow, FeaturedStoryCard, Section, StoryCard } from '../components/StoryCard'
 import { placeNameAt } from '../geocoding'
 import { useHere } from '../here'
-import { placeHeading, useSelectedPlace, type SelectedPlace } from '../selectedPlace'
+import { distanceFrom, placeHeading, useSelectedPlace, type SelectedPlace } from '../selectedPlace'
 
 // How many stories each section shows before "See all".
 const PER_SECTION = 4
@@ -107,11 +107,8 @@ function DiscoverStart() {
   )
 }
 
-function distanceNote(km: number) {
-  return `${km < 1 ? 'Under 1 km' : `${Math.round(km)} km`} away`
-}
-
-// Stories for the chosen place: a small location state, then sections with a few cards each.
+// Stories for the chosen place: the place as the main heading, a quiet line of actions, a featured
+// story, then sections with a few cards each.
 function PlaceStories({ place }: { place: SelectedPlace }) {
   const { clear } = useSelectedPlace()
   const { isAuthenticated } = useConvexAuth()
@@ -132,33 +129,28 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
     stories: rest.filter((s) => s.category === value),
   })).filter((c) => c.stories.length > 0)
   const uncategorized = rest.filter((s) => !s.category)
+  // Distances only when there's a clear starting point (see distanceFrom).
+  const note = (km: number) => distanceFrom(place, km)
 
   return (
     <div>
-      {/* The location state, kept small; Change location goes back to the search. */}
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <h1 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">{heading}</h1>
-        <span aria-hidden className="text-stone-400">
-          ·
+      <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-stone-900 sm:text-5xl">{heading}</h1>
+      {/* A quiet line under the place: how many stories, and the two ways to go elsewhere. */}
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500 sm:text-base" aria-live="polite">
+        <span>
+          {stories === undefined ? 'Finding stories…' : `${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`}
         </span>
-        <button
-          type="button"
-          onClick={clear}
-          className="text-sm font-semibold text-orange-700 underline-offset-2 hover:underline sm:text-base"
-        >
+        <span aria-hidden>·</span>
+        <button type="button" onClick={clear} className="font-medium text-stone-700 underline-offset-2 hover:text-stone-900 hover:underline">
           Change location
         </button>
-      </div>
-      <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-stone-500" aria-live="polite">
-        <span>
-          {stories === undefined
-            ? 'Finding stories…'
-            : `Within ${place.radiusKm} km · ${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`}
-        </span>
         {stories && stories.length > 0 && (
-          <Link to={mapHref} className="inline-flex items-center gap-1 font-medium text-stone-700 hover:underline">
-            <PinIcon className="h-3.5 w-3.5" /> Show on map
-          </Link>
+          <>
+            <span aria-hidden>·</span>
+            <Link to={mapHref} className="font-medium text-stone-700 underline-offset-2 hover:text-stone-900 hover:underline">
+              Show on map
+            </Link>
+          </>
         )}
       </p>
 
@@ -190,23 +182,16 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
         </div>
       ) : (
         <>
-          <Section
-            title={
-              where === 'you'
-                ? 'Closest to you'
-                : place.source === 'search' && place.radiusKm > 60
-                  ? `Closest to the centre of ${where}`
-                  : `Closest to ${where}`
-            }
-          >
-            <FeaturedStoryCard story={nearest} note={distanceNote(nearest.distanceKm)} />
-          </Section>
+          {/* No heading above the featured story: it's simply the first story here. */}
+          <div className="mt-8">
+            <FeaturedStoryCard story={nearest} note={note(nearest.distanceKm)} />
+          </div>
 
           {byCategory.map(({ value, label, stories: inCategory }) => (
             <Section key={value} title={label} seeAll={inCategory.length > PER_SECTION ? `/place/${value}` : undefined}>
               <CardRow>
                 {inCategory.slice(0, PER_SECTION).map((story) => (
-                  <StoryCard key={story._id} story={story} note={distanceNote(story.distanceKm)} />
+                  <StoryCard key={story._id} story={story} note={note(story.distanceKm)} />
                 ))}
               </CardRow>
             </Section>
@@ -216,7 +201,7 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
             <Section title="More stories" seeAll={uncategorized.length > PER_SECTION ? '/place/all' : undefined}>
               <CardRow>
                 {uncategorized.slice(0, PER_SECTION).map((story) => (
-                  <StoryCard key={story._id} story={story} note={distanceNote(story.distanceKm)} />
+                  <StoryCard key={story._id} story={story} note={note(story.distanceKm)} />
                 ))}
               </CardRow>
             </Section>

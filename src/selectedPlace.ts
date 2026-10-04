@@ -32,3 +32,13 @@ export function placeHeading(place: SelectedPlace) {
   if (place.source === 'device') return place.label === 'you' ? 'Stories near you' : `Stories near ${place.label}`
   return `Stories in ${place.label}`
 }
+
+// Searches wider than this are regions (e.g. Sardinia): their centre isn't a meaningful starting point.
+const REGION_KM = 60
+
+// "42 km from Cagliari" or "42 km from you", or nothing when there's no clear point to measure from.
+export function distanceFrom(place: SelectedPlace, km: number) {
+  const from = place.source === 'device' ? 'you' : place.radiusKm <= REGION_KM ? place.label : null
+  if (!from) return undefined
+  return `${km < 1 ? 'Under 1 km' : `${Math.round(km)} km`} from ${from}`
+}

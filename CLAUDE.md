@@ -50,9 +50,12 @@ the edit form asks the author instead. Home has two states. With no place chosen
 a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
 just the logo and Sign In (`useOpeningScreen` in `AppShell`). Choosing a place (search) or Use My
 Location (device) sets the `SelectedPlace` (`src/selectedPlace.ts`, kept in `sessionStorage` for the tab so
-it survives sign-in). Home then shows "Stories in X · Change location" (or "Stories near X" for the device,
-whose name comes from `placeNameAt` reverse geocoding), a featured nearest story, and up to 4 stories per
-category, with See all at `/place/:category` (`PlaceAll`). All of this comes from `discover.nearby`
+it survives sign-in). Home then shows a large serif "Stories in X" (or "Stories near X" for the device, named by
+`placeNameAt` reverse geocoding), a quiet "N stories · Change location · Show on map" line, the nearest
+story featured with no heading above it, and up to 4 stories per category, with See all at
+`/place/:category` (`PlaceAll`). Distances show only with a clear starting point (`distanceFrom`):
+"… from you" after Use My Location, "… from Cagliari" for a searched town or landmark, and nothing for a
+region (search radius over 60 km). All of this comes from `discover.nearby`
 (`limit` up to 100, optional `category`). A searched place and the device location are separate, and
 neither replaces the other. Guests can browse and read everything; Add a Story shows only when signed in,
 and `RequireAuth` / Sign In send people back to where they were (`state.from`, including the query
@@ -75,7 +78,8 @@ added later as an optional field; there is no audio now.
 **Story cards and covers.** Every story list (and Map popups and the review queue) uses `StoryCover` /
 `StoryCard` from `src/components/StoryCard.tsx`. Picture covers sit in a white paper frame with a 9% margin,
 fitted whole and then scaled and moved by `cover.scale` / `x` / `y`, which are display settings only.
-Without a picture the card uses the category gradient. Never put text inside the cover. `stories.cover` is
+Without a picture the card uses the category gradient. Never put text inside the cover, except the small story-type tag (`categoryOne`, e.g. "Local Legend")
+on the large featured cover. `stories.cover` is
 `{ kind: "image", storageId, alt, credit?, scale, x, y }` or `{ kind: "colors" }`. Stories without `cover`
 fall back to their first illustration (`cardCoverOf` in `convex/covers.ts`). `cleanCover` accepts a picture
 only if it's one of the story's own illustrations, already its cover, or an upload the author claimed via

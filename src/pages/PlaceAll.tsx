@@ -3,7 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { CATEGORIES, type StoryCategory } from '../../convex/taxonomy'
 import { StoryCard } from '../components/StoryCard'
-import { placeHeading, useSelectedPlace } from '../selectedPlace'
+import { distanceFrom, placeHeading, useSelectedPlace } from '../selectedPlace'
 
 // "See all" for the chosen place: every story there, or every story in one category.
 export default function PlaceAll() {
@@ -42,7 +42,7 @@ export default function PlaceAll() {
               key={story._id}
               story={story}
               wide
-              note={`${story.distanceKm < 1 ? 'Under 1 km' : `${Math.round(story.distanceKm)} km`} away`}
+              note={distanceFrom(place, story.distanceKm)}
             />
           ))}
         </div>

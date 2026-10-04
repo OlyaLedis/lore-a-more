@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Id } from '../../convex/_generated/dataModel'
-import { categoryLabel, themeLabel, type AgeRange, type StoryCategory, type StoryTheme } from '../../convex/taxonomy'
+import { categoryLabel, categoryOne, themeLabel, type AgeRange, type StoryCategory, type StoryTheme } from '../../convex/taxonomy'
 import { PinIcon } from './Icons'
 
 export type CardStory = {
@@ -73,15 +73,24 @@ const covers: Record<StoryCategory | 'none', string> = {
 export function StoryCover({
   category,
   cover,
+  tag,
   className = '',
 }: {
   category?: StoryCategory
   cover?: CardCover | null
+  // A small story-type label in the corner, used only on the large featured cover.
+  tag?: string
   className?: string
 }) {
+  const tagLabel = tag && (
+    <span className="absolute left-3 top-3 z-10 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-stone-700 shadow-sm ring-1 ring-stone-900/10 sm:left-4 sm:top-4">
+      {tag}
+    </span>
+  )
   if (cover) {
     return (
       <div className={`relative aspect-square overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200 ${className}`}>
+        {tagLabel}
         <div className="absolute inset-[9%]">
           <img
             src={cover.url}
@@ -97,6 +106,7 @@ export function StoryCover({
   }
   return (
     <div className={`relative aspect-square overflow-hidden rounded-2xl bg-linear-to-br ${covers[category ?? 'none']} ${className}`}>
+      {tagLabel}
       {/* A soft circle for depth; purely decorative. */}
       <div className="pointer-events-none absolute -right-[22%] -top-[22%] h-[85%] w-[85%] rounded-full bg-white/15" />
     </div>
@@ -156,6 +166,7 @@ export function FeaturedStoryCard({ story, note }: { story: CardStory; note?: st
       <StoryCover
         category={story.category}
         cover={story.cover}
+        tag={story.category && categoryOne(story.category)}
         className="w-full shrink-0 transition group-hover:brightness-105 sm:w-72 md:w-80"
       />
       <div className="min-w-0">
