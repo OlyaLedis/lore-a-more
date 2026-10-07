@@ -75,14 +75,44 @@ no auto-scroll under reduced motion, and the position is an anchor like `s2:3` s
 `readingPositions` (signed in) and localStorage. Scenes have stable ids so an optional sound cue can be
 added later as an optional field; there is no audio now.
 
-**Map style.** All maps use `BaseMap` (`src/components/StoryMap.tsx`), whose tiles come from
-`src/mapStyle.ts`: MapTiler "Dataviz Light" raster tiles (or `VITE_MAPTILER_MAP_STYLE`, a custom MapTiler map
-ID), falling back to OpenStreetMap without a key. From zoom `SATELLITE_FROM_ZOOM` (11, town level) and closer,
-`SatelliteWhenClose` lays MapTiler "hybrid" tiles (satellite photos with place names) over it. Pins (`StoryPin`) are round markers in the type's colour (`PIN_COLORS`) carrying the type's symbol
-(`TYPE_SYMBOLS` in `src/storyTypes.ts`: crown = Local Legends, tower = Stories of a Place, book = Folktales &
-Myths, heart = Personal Stories), so types don't rely on colour alone. Approximate or uncertain places add
-a soft circle. The Map tab's `MapLegend` lists the types with counts for the visible area, and tapping a
-type hides or shows its pins.
+**Map style.** All maps use `BaseMap` (`src/components/StoryMap.tsx`). Its base map comes from
+`src/mapStyle.ts`, where all zoom levels are Leaflet's, the same as the position strip shows.
+- `CalmBase` draws MapTiler "Dataviz Light" from its vector style with MapLibre (via
+  `@maplibre/maplibre-gl-leaflet`, lazy-loaded so only map pages download it).
+- `storyPlaceStyle` turns it into a calm, editorial basemap (`storyPlaceColors`, `CALM`, `HIDDEN`). It
+  has warm off-white land, one soft green for large forests, light blue-grey water, hairline motorways
+  only (from Leaflet zoom 7), and only large city, region, country, and sea names. Small land uses,
+  buildings, rail, paths, minor roads, borders, and small labels are hidden. So are river areas and
+  stream lines until zoomed in. There are no drop shadows.
+- There is no legend panel on the map.
+- Stories on maps are small coloured dots (`StoryPin`, styled by `.sp-dot` in `index.css`): 7px, 10px on
+  hover, and 14px while their popup is open (`large` keeps a single story's dot at 14px). Each dot sits in
+  an invisible 24px hit area. There are no pin shapes or icons yet. The category colours live in
+  `src/mapStories.ts` (`MAP_CATEGORIES`). The Map tab filters by `status === "published"` first, then by its
+  category filter chips, which are UI state kept separate from the stories. In development it shows
+  `EUROPEAN_LEGENDS` (`src/data/europeanLegends.ts`: 71 real legends, located from the Wikipedia article
+  for each site, with a link to read more). `MOCK_STORIES` (`src/data/mockStories.ts`: 1,100 placeholder
+  stories, all published) is for testing a busy map. Production shows the app's published stories.
+  `VITE_MAP_DATA=legends|mock|live` overrides this. Card covers without a picture use the same colour
+  as the story's map dot (`coverColor`). There is no Personal Stories category.
+- It also adds satellite photos from zoom `SATELLITE_FROM_ZOOM` (8, about a 20 km scale bar) and MapTiler
+  contour lines (index lines, minor lines from zoom 11, height labels from zoom 12). These sit below the
+  place names.
+- MapLibre runs one zoom level below Leaflet, so the style converts with `z()`.
+- MapLibre's worker is pointed at the bundled file with `setWorkerUrl`.
+- Until MapLibre loads, or without WebGL, raster tiles show, and Leaflet switches in satellite photos
+  (no contours).
+- In dev builds the MapLibre map is available as `window.storyplaceMap` for debugging.
+- `VITE_MAPTILER_MAP_STYLE` swaps in a custom MapTiler map, with no recolouring. Without a key the app
+  falls back to OpenStreetMap.
+- The Map tab waits for the stories and opens already framed around them (`startingView`), so it never
+  starts on the world and then jumps.
+- Pins and other map furniture have no drop shadows.
+
+**Position strip.** `MapStatusBar` is a thin dark strip of map readouts at the top of the header (Felt-style):
+LAT/LON, zoom, place, and a scale bar. Pages report into `MapStatusContext` (`src/mapStatus.ts`): the Map tab
+sends its live centre, zoom, and scale. Story pages and Home with a chosen place use `usePlaceStatus`. Pages
+that don't report, including the opening screen, show no strip.
 
 **Story cards and covers.** Every story list (and Map popups and the review queue) uses `StoryCover` /
 `StoryCard` from `src/components/StoryCard.tsx`. Picture covers sit in a white paper frame with a 9% margin,

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Id } from '../../convex/_generated/dataModel'
 import { categoryLabel, categoryOne, themeLabel, type AgeRange, type StoryCategory, type StoryTheme } from '../../convex/taxonomy'
+import { coverColor } from '../mapStories'
 import { PinIcon } from './Icons'
 
 export type CardStory = {
@@ -56,14 +57,12 @@ function cardDescription(story: CardStory, note?: string) {
 const cardFocus =
   'focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-orange-600'
 
-// Each category has its own cover colors, used when a story has no illustration. Stories from before
-// categories get a neutral cover.
-const covers: Record<StoryCategory | 'none', string> = {
-  local_legend: 'from-indigo-700 via-violet-600 to-fuchsia-500',
-  personal: 'from-rose-600 via-orange-500 to-amber-400',
-  place: 'from-emerald-700 via-teal-600 to-cyan-500',
-  folktale: 'from-amber-700 via-orange-600 to-red-500',
-  none: 'from-stone-600 via-stone-500 to-stone-400',
+// Without an illustration, a cover takes its category's map-dot colour (coverColor), fading lighter
+// towards the corner, so a card and its dot on the map match. Stories from before categories get a
+// neutral cover.
+function colorCover(category: StoryCategory | undefined) {
+  const color = coverColor(category)
+  return { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 55%, white))` }
 }
 
 // The square cover, the same everywhere a story appears. It never carries text: the title,
@@ -105,10 +104,10 @@ export function StoryCover({
     )
   }
   return (
-    <div className={`relative aspect-square overflow-hidden rounded-2xl bg-linear-to-br ${covers[category ?? 'none']} ${className}`}>
+    <div className={`relative aspect-square overflow-hidden rounded-2xl ${className}`} style={colorCover(category)}>
       {tagLabel}
       {/* A soft circle for depth; purely decorative. */}
-      <div className="pointer-events-none absolute -right-[22%] -top-[22%] h-[85%] w-[85%] rounded-full bg-white/15" />
+      <div className="pointer-events-none absolute -right-[22%] -top-[22%] h-[85%] w-[85%] rounded-full bg-white/25" />
     </div>
   )
 }

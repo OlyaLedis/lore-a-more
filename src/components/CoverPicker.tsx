@@ -253,7 +253,7 @@ export function CoverPicker({
 
 const exampleCards: CardStory[] = [
   { _id: 'example-a' as Id<'stories'>, title: 'The Bridge the Giant Built', category: 'local_legend', ageRange: '8+', place: 'Example place' },
-  { _id: 'example-b' as Id<'stories'>, title: 'Grandmother’s Lantern', category: 'personal', ageRange: '6+', place: 'Example place' },
+  { _id: 'example-b' as Id<'stories'>, title: 'The Fox and the Lantern', category: 'folktale', ageRange: '6+', place: 'Example place' },
 ]
 
 function Option({

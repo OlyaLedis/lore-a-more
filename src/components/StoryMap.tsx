@@ -1,69 +1,60 @@
-import { divIcon, type DivIcon, type LatLngExpression } from 'leaflet'
+import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression } from 'leaflet'
 import { useEffect, useState, type ReactNode } from 'react'
-import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-import type { StoryCategory } from '../../convex/taxonomy'
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { zoomFor, type Precision } from '../location'
-import { BASE_MAP, PIN_COLORS, SATELLITE_FROM_ZOOM, SATELLITE_MAP } from '../mapStyle'
-import { pinHtml, type StoryType } from '../storyTypes'
+import { BASE_MAP, SATELLITE_FROM_ZOOM, SATELLITE_MAP, storyPlaceStyle, VECTOR_STYLE_URL } from '../mapStyle'
+import { NEUTRAL_DOT } from '../mapStories'
 
 export type LatLng = { lat: number; lng: number }
 
-// One Leaflet icon per type and size, reused by every pin.
+// One Leaflet icon per colour and size, reused by every dot.
 const icons = new Map<string, DivIcon>()
-function pinIcon(type: StoryType, size: number) {
-  const key = `${type}:${size}`
+function dotIcon(color: string, large: boolean) {
+  const key = `${color}:${large}`
   let icon = icons.get(key)
   if (!icon) {
     icon = divIcon({
-      html: pinHtml(type, size),
-      className: 'sp-pin-wrap',
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
-      popupAnchor: [0, -size / 2],
+      // A 24px invisible hit area keeps small dots easy to click and tap; the dot sits in the middle.
+      html: `<span class="sp-dot${large ? ' sp-dot-large' : ''}" style="background:${color}"></span>`,
+      className: 'sp-dot-hit',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -6],
     })
     icons.set(key, icon)
   }
   return icon
 }
 
-// A story on the map: a round pin in its type's colour with the type's symbol (crown, tower, book,
-// heart), so types are told apart without relying on colour. An approximate or uncertain place
-// also gets a soft, see-through circle around a smaller pin, so it doesn't read as an exact spot.
-// Older stories without a precision get the plain pin.
+// A story on the map: a small coloured dot (7px; 10px on hover; 14px while its story is open). No pin
+// shape or symbol. `large` keeps it at the selected size, for a single story's own map or a pin being
+// placed in the story form.
 export function StoryPin({
   center,
-  precision,
-  category,
+  color = NEUTRAL_DOT,
+  large = false,
   title,
   children,
 }: {
   center: LatLng
-  precision?: Precision
-  category?: StoryCategory
+  color?: string
+  large?: boolean
   // Shown on hover and read by screen readers.
   title?: string
   children?: ReactNode
 }) {
-  const type: StoryType = category ?? 'none'
-  const color = PIN_COLORS[type]
-  if (precision === 'area' || precision === 'uncertain') {
-    const uncertain = precision === 'uncertain'
-    return (
-      <>
-        <CircleMarker
-          center={center}
-          radius={uncertain ? 24 : 20}
-          interactive={false}
-          pathOptions={{ color, weight: 2, fillColor: color, fillOpacity: uncertain ? 0.12 : 0.22, dashArray: uncertain ? '5 5' : undefined }}
-        />
-        <Marker position={center} icon={pinIcon(type, 22)} title={title} alt={title}>
-          {children}
-        </Marker>
-      </>
-    )
-  }
   return (
-    <Marker position={center} icon={pinIcon(type, 28)} title={title} alt={title}>
+    <Marker
+      position={center}
+      icon={dotIcon(color, large)}
+      title={title}
+      alt={title}
+      eventHandlers={{
+        // The selected size while this story's popup is open.
+        popupopen: (e) => e.target.getElement()?.classList.add('is-selected'),
+        popupclose: (e) => e.target.getElement()?.classList.remove('is-selected'),
+      }}
+    >
       {children}
     </Marker>
   )
@@ -72,25 +63,82 @@ export function StoryPin({
 export function BaseMap({
   center = [20, 0],
   zoom = 2,
+  bounds,
   className = 'h-96',
   children,
 }: {
   center?: LatLngExpression
   zoom?: number
+  // Opens already framed around this area (instead of center/zoom), so the map never jumps.
+  bounds?: LatLngBoundsExpression
   className?: string
   children?: ReactNode
 }) {
   return (
     <MapContainer
-      center={center}
-      zoom={zoom}
+      {...(bounds ? { bounds, boundsOptions: { padding: [40, 40], maxZoom: 9 } } : { center, zoom })}
       worldCopyJump
       className={`z-0 w-full rounded-lg border border-stone-300 ${className}`}
     >
-      <TileLayer url={BASE_MAP.url} attribution={BASE_MAP.attribution} />
-      <SatelliteWhenClose />
+      <CalmBase />
       {children}
     </MapContainer>
+  )
+}
+
+// The calm base map: drawn from the vector style with StoryPlace's colours, contour lines, and
+// satellite photos when zoomed in once MapLibre has loaded
+// (only map pages download it). Until then, and if it fails, the ready-made image tiles show, so the
+// map is never blank.
+function CalmBase() {
+  const map = useMap()
+  const [drawn, setDrawn] = useState(false)
+
+  useEffect(() => {
+    const styleUrl = VECTOR_STYLE_URL
+    if (!styleUrl) return
+    let cancelled = false
+    let layer: { remove: () => void } | null = null
+    const draw = async () => {
+      try {
+        const [{ maplibreGL }, { setWorkerUrl }, { default: workerUrl }, style] = await Promise.all([
+          import('@maplibre/maplibre-gl-leaflet'),
+          import('maplibre-gl'),
+          // MapLibre draws in a background worker; point it at the bundled file, since Vite moves it.
+          import('maplibre-gl/dist/maplibre-gl-worker.mjs?url'),
+          fetch(styleUrl).then((res) => {
+            if (!res.ok) throw new Error(`Map style failed (${res.status})`)
+            return res.json()
+          }),
+          import('maplibre-gl/dist/maplibre-gl.css'),
+        ])
+        if (cancelled) return
+        setWorkerUrl(workerUrl)
+        // One credit line: the style's two data sources would each add the same MapTiler credit.
+        const gl = maplibreGL({ style: storyPlaceStyle(style), attributionControl: { customAttribution: BASE_MAP.attribution } })
+        layer = gl.addTo(map)
+        gl.getMaplibreMap().once('load', () => !cancelled && setDrawn(true))
+        // Lets developers inspect the drawn map from the browser console; not in production builds.
+        if (import.meta.env.DEV) (window as unknown as { storyplaceMap?: unknown }).storyplaceMap = gl.getMaplibreMap()
+      } catch (err) {
+        console.warn('Using image tiles for the map:', err)
+      }
+    }
+    void draw()
+    return () => {
+      cancelled = true
+      layer?.remove()
+    }
+  }, [map])
+
+  // Once drawn, MapLibre also shows the satellite photos and contour lines. Until then: image tiles,
+  // with the satellite photos switched in by Leaflet.
+  if (drawn) return null
+  return (
+    <>
+      <TileLayer url={BASE_MAP.url} attribution={BASE_MAP.attribution} />
+      <SatelliteWhenClose />
+    </>
   )
 }
 
@@ -102,7 +150,8 @@ function SatelliteWhenClose() {
   const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
   const current = zoom ?? map.getZoom()
   if (!SATELLITE_MAP || current < SATELLITE_FROM_ZOOM) return null
-  return <TileLayer url={SATELLITE_MAP.url} attribution={SATELLITE_MAP.attribution} />
+  // Above the calm base map, whichever way it's drawn.
+  return <TileLayer url={SATELLITE_MAP.url} attribution={SATELLITE_MAP.attribution} zIndex={10} />
 }
 
 // Where the form's map should look: a chosen place, or (before a pin exists) a town the author
@@ -137,7 +186,7 @@ export function LocationMap({
     >
       {focus && <Recenter focus={focus} />}
       {onPick && <ClickToPick onPick={onPick} />}
-      {value && <StoryPin center={value} precision={precision} />}
+      {value && <StoryPin center={value} color="#EA580C" large />}
     </BaseMap>
   )
 }

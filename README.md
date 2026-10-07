@@ -173,7 +173,8 @@ but writers have to mark places by clicking a map.
 For the published site, set `VITE_MAPTILER_KEY` in the hosting provider's build settings too, since
 `.env.local` never leaves your computer.
 
-The same key draws the maps, in MapTiler's calm **Dataviz Light** style. To give StoryPlace its own map style,
+The same key draws the maps: MapTiler's calm **Dataviz Light** style, with StoryPlace's own soft green
+forests and grey-blue water (set in `src/mapStyle.ts`), and satellite photos when zoomed in close. To give StoryPlace its own map style,
 open [cloud.maptiler.com](https://cloud.maptiler.com/) → **Maps**, choose Dataviz Light → **Customize**, adjust
 colours and fonts, save, and copy the new map's ID into `.env.local`:
 

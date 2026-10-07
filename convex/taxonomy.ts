@@ -4,7 +4,6 @@ import { v, type Infer } from "convex/values";
 
 export const storyCategory = v.union(
   v.literal("local_legend"),
-  v.literal("personal"),
   v.literal("place"),
   v.literal("folktale"),
 );
@@ -13,7 +12,6 @@ export type StoryCategory = Infer<typeof storyCategory>;
 // `label` names a section of many stories; `one` names the type of a single story, e.g. on a cover tag.
 export const CATEGORIES: { value: StoryCategory; label: string; one: string; hint: string }[] = [
   { value: "local_legend", label: "Local Legends", one: "Local Legend", hint: "Legends told about a particular place." },
-  { value: "personal", label: "Personal Stories", one: "Personal Story", hint: "Something that happened to you or your family." },
   { value: "place", label: "Stories of a Place", one: "Story of a Place", hint: "The history and life of a place." },
   { value: "folktale", label: "Folktales & Myths", one: "Folktale or Myth", hint: "Traditional tales, myths, and fairy tales." },
 ];

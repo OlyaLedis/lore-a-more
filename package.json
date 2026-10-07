@@ -13,8 +13,10 @@
   "dependencies": {
     "@auth/core": "^0.41.3",
     "@convex-dev/auth": "^0.0.95",
+    "@maplibre/maplibre-gl-leaflet": "^0.1.4",
     "convex": "^1.46.0",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^6.13.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-leaflet": "^5.0.0",

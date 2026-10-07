@@ -9,16 +9,48 @@
   }
 }
 
-/* Story pins on maps: a round disc in the story type's colour with a white symbol (see pinHtml). */
-.sp-pin {
+/* Story dots on maps (see StoryPin). The marker element is a 24px invisible hit area; the dot inside
+   grows on hover and while its story is open. A thin dark edge and a faint light ring keep the pastel
+   dots readable on both the light map and satellite photos. */
+.sp-dot-hit {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
-}
-.sp-pin-wrap {
   background: none;
   border: none;
+}
+.sp-dot {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  border: 1px solid rgb(28 25 23 / 0.55);
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.6);
+  transition: width 150ms ease, height 150ms ease;
+}
+.sp-dot-hit:hover .sp-dot {
+  width: 10px;
+  height: 10px;
+}
+.sp-dot-hit.is-selected .sp-dot,
+.sp-dot.sp-dot-large {
+  width: 14px;
+  height: 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-dot {
+    transition: none;
+  }
+}
+
+/* Flat map furniture: no drop shadows on zoom buttons and popups, thin borders instead. */
+.leaflet-touch .leaflet-bar,
+.leaflet-bar {
+  box-shadow: none;
+  border: 1px solid rgb(28 25 23 / 0.15);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  box-shadow: none;
+  border: 1px solid rgb(28 25 23 / 0.15);
 }

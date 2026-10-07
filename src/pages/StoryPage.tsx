@@ -11,6 +11,8 @@ import { StoryActions } from '../components/StoryActions'
 import { BaseMap, StoryPin } from '../components/StoryMap'
 import { byline, formatDate } from '../format'
 import { precisionNote, zoomFor } from '../location'
+import { usePlaceStatus } from '../mapStatus'
+import { dotColor, mapCategory } from '../mapStories'
 import { useRecordView } from '../useRecordView'
 
 export default function StoryPage() {
@@ -21,6 +23,8 @@ export default function StoryPage() {
   const navigate = useNavigate()
   const [enlarged, setEnlarged] = useState<Picture | null>(null)
   useRecordView(story)
+  // The story's place in the strip above the header.
+  usePlaceStatus(story?.location ? { ...story.location, label: story.location.place?.split(',')[0] } : null)
 
   if (story === undefined) return <p className="text-stone-500">Loading…</p>
   if (story === null) {
@@ -124,7 +128,7 @@ export default function StoryPage() {
       {story.location && (
         <div className="mt-10">
           <BaseMap center={story.location} zoom={zoomFor(story.location.precision)} className="h-64">
-            <StoryPin center={story.location} precision={story.location.precision} category={story.category} title={story.title} />
+            <StoryPin center={story.location} color={dotColor(mapCategory(story.category))} large title={story.title} />
           </BaseMap>
           {precisionNote(story.location.precision) && (
             <p className="mt-2 text-sm text-stone-500">{precisionNote(story.location.precision)}</p>

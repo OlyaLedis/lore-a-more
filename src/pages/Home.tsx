@@ -9,6 +9,7 @@ import { PlaceFinder, type FindTarget } from '../components/PlaceFinder'
 import { CardRow, FeaturedStoryCard, Section, StoryCard } from '../components/StoryCard'
 import { placeNameAt } from '../geocoding'
 import { useHere } from '../here'
+import { usePlaceStatus } from '../mapStatus'
 import { distanceFrom, placeHeading, useSelectedPlace, type SelectedPlace } from '../selectedPlace'
 
 // How many stories each section shows before "See all".
@@ -113,6 +114,7 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
   const { clear } = useSelectedPlace()
   const { isAuthenticated } = useConvexAuth()
   const stories = useQuery(api.discover.nearby, { here: place.center, radiusKm: place.radiusKm, limit: 100 })
+  usePlaceStatus({ ...place.center, label: place.label === 'you' ? 'Your location' : place.label })
   const heading = placeHeading(place)
   const where = place.source === 'device' && place.label === 'you' ? 'you' : place.label
   const mapHref = `/map?${new URLSearchParams({

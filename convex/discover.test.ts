@@ -19,7 +19,7 @@ describe("search and filters", () => {
       themes: ["castles", "giants"],
       location: lisbon,
     });
-    await publish(users, { title: "Grandma's kitchen", category: "personal", themes: ["family"] });
+    await publish(users, { title: "Grandma's kitchen", category: "folktale", themes: ["family"] });
     // Pending stories never show up.
     await users.author.mutation(api.stories.submit, {
       title: "Castle draft",
@@ -37,7 +37,7 @@ describe("search and filters", () => {
     expect(await ids({ text: "Lisbon" })).toEqual([castle]);
     expect(await ids({ text: "legends" })).toEqual([castle]);
     expect(await ids({ text: "giants" })).toEqual([castle]);
-    expect(await ids({ text: "castle", category: "personal" })).toEqual([]);
+    expect(await ids({ text: "castle", category: "folktale" })).toEqual([]);
   });
 
   test("filters by category, theme, and age suitability", async () => {
@@ -82,7 +82,7 @@ describe("home sections", () => {
     await users.author.mutation(api.stories.submit, {
       title: "Pending",
       scenes: oneScene("…"),
-      category: "personal",
+      category: "folktale",
       ageRange: "6+",
       themes: [],
       source: { kind: "personal" },
@@ -139,9 +139,9 @@ describe("Top Picks", () => {
   test("recommends nearby stories and stories sharing themes the reader explored, with reasons", async () => {
     const users = await setupUsers();
     const opened = await publish(users, { title: "Opened", themes: ["sea"], category: "place" });
-    const sameTheme = await publish(users, { title: "Sea", themes: ["sea"], category: "personal" });
+    const sameTheme = await publish(users, { title: "Sea", themes: ["sea"], category: "folktale" });
     const sameCategory = await publish(users, { title: "Place", themes: [], category: "place" });
-    const nearby = await publish(users, { title: "Near", location: lisbon, category: "personal" });
+    const nearby = await publish(users, { title: "Near", location: lisbon, category: "folktale" });
     await publish(users, { title: "Unrelated", themes: ["giants"], category: "folktale" });
 
     await users.reader.mutation(api.library.recordView, { storyId: opened });

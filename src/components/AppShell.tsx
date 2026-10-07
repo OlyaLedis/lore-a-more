@@ -4,6 +4,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { useSelectedPlace } from '../selectedPlace'
 import { HomeIcon, LibraryIcon, MapIcon, PlusIcon, SearchIcon } from './Icons'
+import { MapStatusBar, MapStatusProvider } from './MapStatusBar'
 
 const tabs = [
   { to: '/', label: 'Home', Icon: HomeIcon, end: true },
@@ -23,12 +24,14 @@ function useOpeningScreen() {
 export function AppShell({ children }: { children: ReactNode }) {
   const opening = useOpeningScreen()
   return (
+    <MapStatusProvider>
     <div className="min-h-screen bg-stone-50 text-stone-900">
       <TopBar opening={opening} />
       {/* Bottom padding keeps content clear of the floating tab bar on phones. */}
       <main className={`mx-auto max-w-5xl px-4 pt-6 sm:px-6 md:pb-16 md:pt-10 ${opening ? 'pb-8' : 'pb-32'}`}>{children}</main>
       {!opening && <BottomBar />}
     </div>
+    </MapStatusProvider>
   )
 }
 
@@ -39,6 +42,8 @@ function TopBar({ opening }: { opening: boolean }) {
   const here = location.pathname + location.search
   return (
     <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-stone-50/85 backdrop-blur">
+      {/* Coordinates of whatever place is on screen; empty (hidden) on pages without one. */}
+      <MapStatusBar />
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="font-serif text-xl font-semibold tracking-tight sm:text-2xl">
           Story<span className="text-orange-600">Place</span>
