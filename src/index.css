@@ -8,3 +8,17 @@
     display: none;
   }
 }
+
+/* Story pins on maps: a round disc in the story type's colour with a white symbol (see pinHtml). */
+.sp-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.sp-pin-wrap {
+  background: none;
+  border: none;
+}

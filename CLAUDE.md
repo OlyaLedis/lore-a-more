@@ -75,6 +75,15 @@ no auto-scroll under reduced motion, and the position is an anchor like `s2:3` s
 `readingPositions` (signed in) and localStorage. Scenes have stable ids so an optional sound cue can be
 added later as an optional field; there is no audio now.
 
+**Map style.** All maps use `BaseMap` (`src/components/StoryMap.tsx`), whose tiles come from
+`src/mapStyle.ts`: MapTiler "Dataviz Light" raster tiles (or `VITE_MAPTILER_MAP_STYLE`, a custom MapTiler map
+ID), falling back to OpenStreetMap without a key. From zoom `SATELLITE_FROM_ZOOM` (11, town level) and closer,
+`SatelliteWhenClose` lays MapTiler "hybrid" tiles (satellite photos with place names) over it. Pins (`StoryPin`) are round markers in the type's colour (`PIN_COLORS`) carrying the type's symbol
+(`TYPE_SYMBOLS` in `src/storyTypes.ts`: crown = Local Legends, tower = Stories of a Place, book = Folktales &
+Myths, heart = Personal Stories), so types don't rely on colour alone. Approximate or uncertain places add
+a soft circle. The Map tab's `MapLegend` lists the types with counts for the visible area, and tapping a
+type hides or shows its pins.
+
 **Story cards and covers.** Every story list (and Map popups and the review queue) uses `StoryCover` /
 `StoryCard` from `src/components/StoryCard.tsx`. Picture covers sit in a white paper frame with a 9% margin,
 fitted whole and then scaled and moved by `cover.scale` / `x` / `y`, which are display settings only.

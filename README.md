@@ -173,6 +173,16 @@ but writers have to mark places by clicking a map.
 For the published site, set `VITE_MAPTILER_KEY` in the hosting provider's build settings too, since
 `.env.local` never leaves your computer.
 
+The same key draws the maps, in MapTiler's calm **Dataviz Light** style. To give StoryPlace its own map style,
+open [cloud.maptiler.com](https://cloud.maptiler.com/) → **Maps**, choose Dataviz Light → **Customize**, adjust
+colours and fonts, save, and copy the new map's ID into `.env.local`:
+
+```sh
+VITE_MAPTILER_MAP_STYLE=your-map-id
+```
+
+Restart `npm run dev` to see it. Without a key, the app falls back to OpenStreetMap's standard map.
+
 ---
 
 ## 5. Run the app

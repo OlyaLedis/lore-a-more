@@ -124,7 +124,7 @@ export default function StoryPage() {
       {story.location && (
         <div className="mt-10">
           <BaseMap center={story.location} zoom={zoomFor(story.location.precision)} className="h-64">
-            <StoryPin center={story.location} precision={story.location.precision} />
+            <StoryPin center={story.location} precision={story.location.precision} category={story.category} title={story.title} />
           </BaseMap>
           {precisionNote(story.location.precision) && (
             <p className="mt-2 text-sm text-stone-500">{precisionNote(story.location.precision)}</p>

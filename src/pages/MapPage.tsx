@@ -1,13 +1,16 @@
 import { useQuery } from 'convex/react'
-import { useEffect, useRef } from 'react'
-import { Circle, Popup, useMap } from 'react-leaflet'
+import type { LatLngBounds } from 'leaflet'
+import { useEffect, useRef, useState } from 'react'
+import { Circle, Popup, useMap, useMapEvents } from 'react-leaflet'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
+import { MapLegend } from '../components/MapLegend'
 import { PageHeader } from '../components/PageHeader'
 import { StoryCover } from '../components/StoryCard'
 import { BaseMap, StoryPin, type LatLng } from '../components/StoryMap'
 import { byline } from '../format'
 import { precisionNote } from '../location'
+import type { StoryType } from '../storyTypes'
 
 // Opened from Home's "See them on the map": /map?lat=…&lng=…&r=<km>&label=…
 function useFocusArea() {
@@ -29,6 +32,23 @@ function zoomForRadius(km: number) {
 export default function MapPage() {
   const stories = useQuery(api.stories.mapped)
   const focus = useFocusArea()
+  // Story types switched off in the legend, and the part of the map on screen (for the counts).
+  const [hidden, setHidden] = useState<Set<StoryType>>(new Set())
+  const [bounds, setBounds] = useState<LatLngBounds | null>(null)
+
+  const typeOf = (story: { category?: StoryType }): StoryType => story.category ?? 'none'
+  const visible = stories?.filter((s) => !hidden.has(typeOf(s))) ?? []
+  const counts: Record<StoryType, number> = { local_legend: 0, personal: 0, place: 0, folktale: 0, none: 0 }
+  for (const s of stories ?? []) {
+    if (!bounds || bounds.contains([s.location.lat, s.location.lng])) counts[typeOf(s)]++
+  }
+  const toggle = (type: StoryType) =>
+    setHidden((prev) => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
 
   return (
     <div>
@@ -55,6 +75,7 @@ export default function MapPage() {
       )}
       {/* Tall enough to explore on a phone while leaving room for the heading and the tab bar.
           Keyed on the focus so switching between an area and all stories re-frames the map. */}
+      <div className="relative">
       <BaseMap
         key={focus ? `${focus.center.lat},${focus.center.lng},${focus.radiusKm}` : 'all'}
         center={focus?.center}
@@ -70,8 +91,9 @@ export default function MapPage() {
           />
         )}
         {stories && !focus && <FitToStories points={stories.map((s) => s.location)} />}
-        {stories?.map((story) => (
-          <StoryPin key={story._id} center={story.location} precision={story.location.precision}>
+        <TrackBounds onChange={setBounds} />
+        {visible.map((story) => (
+          <StoryPin key={story._id} center={story.location} precision={story.location.precision} category={story.category} title={story.title}>
             <Popup>
               <div className="mb-2 w-24">
                 <StoryCover category={story.category} cover={story.cover} />
@@ -94,8 +116,27 @@ export default function MapPage() {
           </StoryPin>
         ))}
       </BaseMap>
+      {stories && stories.length > 0 && (
+        <MapLegend
+          counts={counts}
+          hidden={hidden}
+          onToggle={toggle}
+          onShowAll={() => setHidden(new Set())}
+          showOther={stories.some((s) => !s.category)}
+        />
+      )}
+      </div>
     </div>
   )
+}
+
+// Reports the part of the map on screen whenever it changes, for the legend's counts.
+function TrackBounds({ onChange }: { onChange: (bounds: LatLngBounds) => void }) {
+  const map = useMapEvents({ moveend: () => onChange(map.getBounds()) })
+  useEffect(() => {
+    map.whenReady(() => onChange(map.getBounds()))
+  }, [map, onChange])
+  return null
 }
 
 // Frames the stories once when they first load, so a few nearby stories aren't lost in a world view.

@@ -1,37 +1,71 @@
-import type { LatLngExpression, PathOptions } from 'leaflet'
-import { useEffect, type ReactNode } from 'react'
-import { CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { divIcon, type DivIcon, type LatLngExpression } from 'leaflet'
+import { useEffect, useState, type ReactNode } from 'react'
+import { CircleMarker, MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import type { StoryCategory } from '../../convex/taxonomy'
 import { zoomFor, type Precision } from '../location'
+import { BASE_MAP, PIN_COLORS, SATELLITE_FROM_ZOOM, SATELLITE_MAP } from '../mapStyle'
+import { pinHtml, type StoryType } from '../storyTypes'
 
 export type LatLng = { lat: number; lng: number }
 
-// Circle markers avoid Leaflet's default PNG icons, which don't resolve through Vite.
-// An exact site is a solid dot; an area or uncertain place is a wider, fainter ring so it
-// doesn't read as a precise spot. Older stories (no precision) keep the solid dot.
-const pinStyle: Record<Precision | 'unknown', { radius: number; style: PathOptions }> = {
-  exact: { radius: 9, style: { color: '#1c1917', fillColor: '#f97316', fillOpacity: 0.9, weight: 2 } },
-  unknown: { radius: 9, style: { color: '#1c1917', fillColor: '#f97316', fillOpacity: 0.9, weight: 2 } },
-  area: { radius: 18, style: { color: '#c2410c', fillColor: '#f97316', fillOpacity: 0.25, weight: 2 } },
-  uncertain: {
-    radius: 22,
-    style: { color: '#c2410c', fillColor: '#f97316', fillOpacity: 0.12, weight: 2, dashArray: '5 5' },
-  },
+// One Leaflet icon per type and size, reused by every pin.
+const icons = new Map<string, DivIcon>()
+function pinIcon(type: StoryType, size: number) {
+  const key = `${type}:${size}`
+  let icon = icons.get(key)
+  if (!icon) {
+    icon = divIcon({
+      html: pinHtml(type, size),
+      className: 'sp-pin-wrap',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2],
+    })
+    icons.set(key, icon)
+  }
+  return icon
 }
 
+// A story on the map: a round pin in its type's colour with the type's symbol (crown, tower, book,
+// heart), so types are told apart without relying on colour. An approximate or uncertain place
+// also gets a soft, see-through circle around a smaller pin, so it doesn't read as an exact spot.
+// Older stories without a precision get the plain pin.
 export function StoryPin({
   center,
   precision,
+  category,
+  title,
   children,
 }: {
   center: LatLng
   precision?: Precision
+  category?: StoryCategory
+  // Shown on hover and read by screen readers.
+  title?: string
   children?: ReactNode
 }) {
-  const { radius, style } = pinStyle[precision ?? 'unknown']
+  const type: StoryType = category ?? 'none'
+  const color = PIN_COLORS[type]
+  if (precision === 'area' || precision === 'uncertain') {
+    const uncertain = precision === 'uncertain'
+    return (
+      <>
+        <CircleMarker
+          center={center}
+          radius={uncertain ? 24 : 20}
+          interactive={false}
+          pathOptions={{ color, weight: 2, fillColor: color, fillOpacity: uncertain ? 0.12 : 0.22, dashArray: uncertain ? '5 5' : undefined }}
+        />
+        <Marker position={center} icon={pinIcon(type, 22)} title={title} alt={title}>
+          {children}
+        </Marker>
+      </>
+    )
+  }
   return (
-    <CircleMarker center={center} radius={radius} pathOptions={style}>
+    <Marker position={center} icon={pinIcon(type, 28)} title={title} alt={title}>
       {children}
-    </CircleMarker>
+    </Marker>
   )
 }
 
@@ -53,13 +87,22 @@ export function BaseMap({
       worldCopyJump
       className={`z-0 w-full rounded-lg border border-stone-300 ${className}`}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <TileLayer url={BASE_MAP.url} attribution={BASE_MAP.attribution} />
+      <SatelliteWhenClose />
       {children}
     </MapContainer>
   )
+}
+
+// Adds satellite photos on top of the calm base map once the reader zooms in to town level, and
+// removes them when zooming back out. The base map stays underneath, so nothing flashes blank while
+// the photos load.
+function SatelliteWhenClose() {
+  const [zoom, setZoom] = useState<number | null>(null)
+  const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  const current = zoom ?? map.getZoom()
+  if (!SATELLITE_MAP || current < SATELLITE_FROM_ZOOM) return null
+  return <TileLayer url={SATELLITE_MAP.url} attribution={SATELLITE_MAP.attribution} />
 }
 
 // Where the form's map should look: a chosen place, or (before a pin exists) a town the author
