@@ -90,8 +90,13 @@ added later as an optional field; there is no audio now.
   an invisible 24px hit area. There are no pin shapes or icons yet. The category colours live in
   `src/mapStories.ts` (`MAP_CATEGORIES`). The Map tab filters by `status === "published"` first, then by its
   category filter chips, which are UI state kept separate from the stories. In development it shows
-  `EUROPEAN_LEGENDS` (`src/data/europeanLegends.ts`: 71 real legends, located from the Wikipedia article
-  for each site, with a link to read more). `MOCK_STORIES` (`src/data/mockStories.ts`: 1,100 placeholder
+  `EUROPEAN_LEGENDS` (`src/data/europeanLegends.ts`: 84 real legends). Each has a `source` record
+  (title, URL, author or institution, date, source type, the place as the source names it, and
+  confidence), shown in its popup. Prefer archives and published collections over Wikipedia, which is
+  for discovery only; the file's header lists the order. Coordinates come from the site's Wikipedia
+  article. Every story must be place-bound: tied to a real, identifiable
+  place that matters to the story, named in `place`. Don't add famous myths without a specific anchor
+  (see the file's header). `MOCK_STORIES` (`src/data/mockStories.ts`: 1,100 placeholder
   stories, all published) is for testing a busy map. Production shows the app's published stories.
   `VITE_MAP_DATA=legends|mock|live` overrides this. Card covers without a picture use the same colour
   as the story's map dot (`coverColor`). There is no Personal Stories category.

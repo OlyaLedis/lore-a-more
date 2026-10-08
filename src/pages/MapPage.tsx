@@ -128,12 +128,13 @@ export default function MapPage() {
                 <p className="!mb-0 !mt-1 flex items-center gap-1.5 text-xs text-stone-500">
                   <span
                     aria-hidden
-                    className="h-2 w-2 rounded-full border border-stone-900/40"
+                    className="h-2 w-2 rounded-full"
                     style={{ background: dotColor(story.category) }}
                   />
                   {MAP_CATEGORIES.find((c) => c.id === story.category)?.label}
                 </p>
               )}
+              {story.place && <p className="!mb-0 !mt-1 text-xs font-medium text-stone-700">{story.place}</p>}
               <p className="!mb-0 !mt-1 text-stone-600">{story.shortDescription}</p>
               {precisionNote(story.locationType) && (
                 <p className="!m-0 text-xs text-stone-500">{precisionNote(story.locationType)}</p>
@@ -145,15 +146,20 @@ export default function MapPage() {
                 >
                   Open story
                 </Link>
-              ) : story.sourceUrl ? (
-                <a
-                  href={story.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-sm font-semibold text-orange-700 underline-offset-2 hover:underline"
-                >
-                  Read about it on Wikipedia ↗
-                </a>
+              ) : story.source ? (
+                <p className="!mb-0 !mt-2 text-xs text-stone-500">
+                  Source:{' '}
+                  <a
+                    href={story.source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold !text-orange-700 underline-offset-2 hover:underline"
+                  >
+                    {story.source.author ? `${story.source.author.split(' (')[0].split(',')[0]}, ` : ''}
+                    {story.source.title}
+                    {story.source.date ? ` (${story.source.date.split(' (')[0]})` : ''} ↗
+                  </a>
+                </p>
               ) : (
                 <p className="!mb-0 !mt-2 text-xs italic text-stone-400">Sample story (mock data)</p>
               )}
@@ -186,9 +192,9 @@ function CategoryFilter({ hidden, onToggle }: { hidden: Set<MapCategory>; onTogg
           >
             <span
               aria-hidden
-              className="h-2.5 w-2.5 rounded-full border"
-              // Off: just an outline, so it reads as switched off.
-              style={shown ? { background: color, borderColor: 'rgb(28 25 23 / 0.45)' } : { background: 'transparent', borderColor: 'rgb(168 162 158)' }}
+              className="h-2.5 w-2.5 rounded-full"
+              // Off: a pale grey dot, so it reads as switched off.
+              style={{ background: shown ? color : 'rgb(214 211 209)' }}
             />
             {label}
           </button>

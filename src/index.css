@@ -10,8 +10,7 @@
 }
 
 /* Story dots on maps (see StoryPin). The marker element is a 24px invisible hit area; the dot inside
-   grows on hover and while its story is open. A thin dark edge and a faint light ring keep the pastel
-   dots readable on both the light map and satellite photos. */
+   grows on hover and while its story is open. Plain colour, no outline. */
 .sp-dot-hit {
   display: flex;
   align-items: center;
@@ -24,8 +23,6 @@
   width: 7px;
   height: 7px;
   border-radius: 9999px;
-  border: 1px solid rgb(28 25 23 / 0.55);
-  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.6);
   transition: width 150ms ease, height 150ms ease;
 }
 .sp-dot-hit:hover .sp-dot {

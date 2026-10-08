@@ -30,8 +30,34 @@ export type MapStory = {
   locationType: 'exact' | 'area' | 'uncertain'
   // Only the app's own stories have a page to open.
   href?: string
-  // Where to read more, for the European legends.
-  sourceUrl?: string
+  // The real place the story is anchored to, e.g. "Lorelei rock, Rhine, Germany".
+  place?: string
+  // Where the story comes from, for the researched legends.
+  source?: StorySourceRecord
+}
+
+// Best first: folklore archives and academic collections down to Wikipedia, which is for discovery only.
+export type SourceType =
+  | 'folklore-archive'
+  | 'heritage-institution'
+  | 'museum-or-library'
+  | 'municipal-heritage'
+  | 'published-collection'
+  | 'cultural-website'
+  | 'encyclopedia'
+
+export type StorySourceRecord = {
+  title: string
+  url: string
+  // Author or institution, if known.
+  author?: string
+  // Publication or collection date, if known.
+  date?: string
+  type: SourceType
+  // The place exactly as the source names it.
+  placeNamed: string
+  // How sure the story's geographic attribution is.
+  confidence: 'high' | 'medium' | 'low'
 }
 
 const FROM_APP: Record<StoryCategory, MapCategory> = {
