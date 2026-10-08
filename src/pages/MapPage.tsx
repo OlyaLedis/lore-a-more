@@ -6,7 +6,6 @@ import { api } from '../../convex/_generated/api'
 import { PageHeader } from '../components/PageHeader'
 import { BaseMap, StoryPin, type LatLng } from '../components/StoryMap'
 import { EUROPEAN_LEGENDS } from '../data/europeanLegends'
-import { MOCK_STORIES } from '../data/mockStories'
 import { byline } from '../format'
 import { precisionNote } from '../location'
 import { useMapStatus } from '../mapStatus'
@@ -48,7 +47,7 @@ function useLiveStories(): MapStory[] | undefined {
 export default function MapPage() {
   const live = useLiveStories()
   // European legends in development (see MAP_DATA_SOURCE), the app's stories otherwise.
-  const all = MAP_DATA_SOURCE === 'legends' ? EUROPEAN_LEGENDS : MAP_DATA_SOURCE === 'mock' ? MOCK_STORIES : live
+  const all = MAP_DATA_SOURCE === 'legends' ? EUROPEAN_LEGENDS : live
   // Only published stories go on the map. Category visibility is separate UI state.
   const stories = all?.filter((story) => story.status === 'published')
   const [hiddenCategories, setHiddenCategories] = useState<Set<MapCategory>>(new Set())
@@ -160,9 +159,7 @@ export default function MapPage() {
                     {story.source.date ? ` (${story.source.date.split(' (')[0]})` : ''} ↗
                   </a>
                 </p>
-              ) : (
-                <p className="!mb-0 !mt-2 text-xs italic text-stone-400">Sample story (mock data)</p>
-              )}
+              ) : null}
             </Popup>
           </StoryPin>
         ))}

@@ -1,5 +1,5 @@
-// What the Map tab draws: a simple list of stories as small coloured dots, from real European legends
-// (src/data/europeanLegends.ts), the mock dataset (src/data/mockStories.ts), or the app's published stories.
+// What the Map tab draws: a simple list of stories as small coloured dots, from real legends
+// (src/data/europeanLegends.ts) or the app's published stories.
 import type { StoryCategory } from '../convex/taxonomy'
 
 export type MapCategory = 'local-legend' | 'story-of-place' | 'folktale-myth'
@@ -80,8 +80,8 @@ export function coverColor(category: StoryCategory | undefined) {
 }
 
 // Development shows the European legends; production shows the app's published stories.
-// VITE_MAP_DATA=legends|mock|live overrides.
-export type MapData = 'legends' | 'mock' | 'live'
+// VITE_MAP_DATA=legends|live overrides.
+export type MapData = 'legends' | 'live'
 const MAP_DATA = import.meta.env.VITE_MAP_DATA as string | undefined
 export const MAP_DATA_SOURCE: MapData =
-  MAP_DATA === 'legends' || MAP_DATA === 'mock' || MAP_DATA === 'live' ? MAP_DATA : import.meta.env.DEV ? 'legends' : 'live'
+  MAP_DATA === 'legends' || MAP_DATA === 'live' ? MAP_DATA : import.meta.env.DEV ? 'legends' : 'live'
