@@ -5,6 +5,7 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { ReadingView } from '../components/ReadingView'
 import { useRecordView } from '../useRecordView'
+import { storyPath } from '../storyLinks'
 
 const positionKey = (id: string) => `storyplace.position.${id}`
 
@@ -65,7 +66,7 @@ export default function ReadPage() {
       // The account's saved place wins; otherwise this browser's.
       initialAnchor={saved ?? localPosition(story._id)}
       onPosition={onPosition}
-      onClose={() => navigate(`/story/${story._id}`)}
+      onClose={() => navigate(storyPath(story))}
     />
   )
 }

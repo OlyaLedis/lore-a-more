@@ -1,8 +1,8 @@
-import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression } from 'leaflet'
+import { divIcon, type DivIcon, type LatLngBoundsExpression, type LatLngExpression, type Map as LeafletMap } from 'leaflet'
 import { useEffect, useState, type ReactNode } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { zoomFor, type Precision } from '../location'
-import { BASE_MAP, SATELLITE_FROM_ZOOM, SATELLITE_MAP, storyPlaceStyle, VECTOR_STYLE_URL } from '../mapStyle'
+import { BASE_MAP, storyPlaceStyle, VECTOR_STYLE_URL } from '../mapStyle'
 import { NEUTRAL_DOT } from '../mapStories'
 
 export type LatLng = { lat: number; lng: number }
@@ -15,7 +15,7 @@ function dotIcon(color: string, large: boolean) {
   if (!icon) {
     icon = divIcon({
       // A 24px invisible hit area keeps small dots easy to click and tap; the dot sits in the middle.
-      html: `<span class="sp-dot${large ? ' sp-dot-large' : ''}" style="background:${color}"></span>`,
+      html: `<span class="sp-dot${large ? ' sp-dot-large' : ''}" style="color:${color}"></span>`,
       className: 'sp-dot-hit',
       iconSize: [24, 24],
       iconAnchor: [12, 12],
@@ -26,7 +26,7 @@ function dotIcon(color: string, large: boolean) {
   return icon
 }
 
-// A story on the map: a small coloured dot (7px; 10px on hover; 14px while its story is open). No pin
+// A story on the map: a small coloured dot (10.4px; 14.3px on hover; 18.2px while its story is open). No pin
 // shape or symbol. `large` keeps it at the selected size, for a single story's own map or a pin being
 // placed in the story form.
 export function StoryPin({
@@ -66,6 +66,7 @@ export function BaseMap({
   bounds,
   className = 'h-96',
   children,
+  onMap,
 }: {
   center?: LatLngExpression
   zoom?: number
@@ -73,22 +74,67 @@ export function BaseMap({
   bounds?: LatLngBoundsExpression
   className?: string
   children?: ReactNode
+  // Hands the Leaflet map to the page, for controls drawn outside it (e.g. map search).
+  onMap?: (map: LeafletMap) => void
 }) {
   return (
     <MapContainer
       {...(bounds ? { bounds, boundsOptions: { padding: [40, 40], maxZoom: 9 } } : { center, zoom })}
+      // Like Felt: no panning above the Arctic or below Antarctica; east–west the world repeats, and
+      // panning far jumps back to the same view of the main copy (worldCopyJump).
+      maxBounds={WORLD}
+      maxBoundsViscosity={1}
       worldCopyJump
+      // Smooth zoom steps (Felt shows zooms like 1.2), so the furthest zoom can fit the world exactly.
+      zoomSnap={0.1}
       className={`z-0 w-full rounded-lg border border-stone-300 ${className}`}
     >
+      <OneWorld />
+      {onMap && <HandOver onMap={onMap} />}
       <CalmBase />
       {children}
     </MapContainer>
   )
 }
 
-// The calm base map: drawn from the vector style with StoryPlace's colours, contour lines, and
-// satellite photos when zoomed in once MapLibre has loaded
-// (only map pages download it). Until then, and if it fails, the ready-made image tiles show, so the
+function HandOver({ onMap }: { onMap: (map: LeafletMap) => void }) {
+  const map = useMap()
+  useEffect(() => onMap(map), [map, onMap])
+  return null
+}
+
+// The whole map, north to south; east–west it's open, since the world repeats there (three copies).
+const WORLD: LatLngBoundsExpression = [
+  [-85, -540],
+  [85, 540],
+]
+
+// The furthest zoom out, as on Felt: the whole world from the Arctic to Antarctica fills the map's
+// height. On a wide map the continents then repeat at the sides, with their story dots (see
+// `worldCopies` in location.ts). Recalculated when the map changes size (e.g. turning a phone).
+function OneWorld() {
+  const map = useMap()
+  useEffect(() => {
+    const fit = () => {
+      const { x, y } = map.getSize()
+      if (!x || !y) return
+      // The world is 256 px tall at zoom 0 and doubles with each zoom level. Rounded up to the zoom
+      // step, so no empty band shows above or below it.
+      const min = Math.ceil(Math.log2(y / 256) * 10) / 10
+      map.setMinZoom(min)
+      if (map.getZoom() < min) map.setZoom(min, { animate: false })
+    }
+    fit()
+    map.on('resize', fit)
+    return () => {
+      map.off('resize', fit)
+    }
+  }, [map])
+  return null
+}
+
+// The calm base map: drawn from the vector style with StoryPlace's colours once
+// MapLibre has loaded (only map pages download it). Until then, and if it fails, the ready-made image tiles show, so the
 // map is never blank.
 function CalmBase() {
   const map = useMap()
@@ -119,7 +165,9 @@ function CalmBase() {
         layer = gl.addTo(map)
         gl.getMaplibreMap().once('load', () => !cancelled && setDrawn(true))
         // Lets developers inspect the drawn map from the browser console; not in production builds.
-        if (import.meta.env.DEV) (window as unknown as { storyplaceMap?: unknown }).storyplaceMap = gl.getMaplibreMap()
+        if (import.meta.env.DEV) {
+          Object.assign(window, { storyplaceMap: gl.getMaplibreMap(), storyplaceLeaflet: map })
+        }
       } catch (err) {
         console.warn('Using image tiles for the map:', err)
       }
@@ -131,27 +179,9 @@ function CalmBase() {
     }
   }, [map])
 
-  // Once drawn, MapLibre also shows the satellite photos and contour lines. Until then: image tiles,
-  // with the satellite photos switched in by Leaflet.
+  // Once MapLibre has drawn the map, the image tiles go. Until then they show.
   if (drawn) return null
-  return (
-    <>
-      <TileLayer url={BASE_MAP.url} attribution={BASE_MAP.attribution} />
-      <SatelliteWhenClose />
-    </>
-  )
-}
-
-// Adds satellite photos on top of the calm base map once the reader zooms in to town level, and
-// removes them when zooming back out. The base map stays underneath, so nothing flashes blank while
-// the photos load.
-function SatelliteWhenClose() {
-  const [zoom, setZoom] = useState<number | null>(null)
-  const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
-  const current = zoom ?? map.getZoom()
-  if (!SATELLITE_MAP || current < SATELLITE_FROM_ZOOM) return null
-  // Above the calm base map, whichever way it's drawn.
-  return <TileLayer url={SATELLITE_MAP.url} attribution={SATELLITE_MAP.attribution} zIndex={10} />
+  return <TileLayer url={BASE_MAP.url} attribution={BASE_MAP.attribution} />
 }
 
 // Where the form's map should look: a chosen place, or (before a pin exists) a town the author

@@ -1,7 +1,7 @@
 import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { ageRange, storyCategory, storySource, storyTheme } from "./taxonomy";
+import { ageRange, storedTheme, storyCategory, storySource } from "./taxonomy";
 
 export const storyStatus = v.union(
   v.literal("pending"),
@@ -14,7 +14,8 @@ export const storyStatus = v.union(
 export const storyMetadata = {
   category: v.optional(storyCategory),
   ageRange: v.optional(ageRange),
-  themes: v.optional(v.array(storyTheme)),
+  // Includes retired themes, which older stories may still have (see legacyTheme).
+  themes: v.optional(v.array(storedTheme)),
   source: v.optional(storySource),
 };
 
@@ -111,13 +112,21 @@ export default defineSchema({
     searchText: v.optional(v.string()),
     // Set when an approved edit replaced the published version.
     editedAt: v.optional(v.number()),
+    // The permanent public code used in links, e.g. "SP-7K3QX9" (see storyCodes.ts). Optional only
+    // because stories saved before codes get theirs from `storyCodes:backfill`.
+    code: v.optional(v.string()),
+    // For stories imported from a curated collection (the place-bound legends), its key there, e.g.
+    // "legend-93", so importing again updates the story instead of adding a copy.
+    importId: v.optional(v.string()),
   })
     .index("by_status_and_approvedAt", ["status", "approvedAt"])
     // Missing fields sort before numbers, so a range on location.lat selects only stories with a pin.
     .index("by_status_and_lat", ["status", "location.lat"])
     .index("by_status_and_category_and_approvedAt", ["status", "category", "approvedAt"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["status", "category"] })
-    .index("by_authorId", ["authorId"]),
+    .index("by_authorId", ["authorId"])
+    .index("by_code", ["code"])
+    .index("by_importId", ["importId"]),
   // An author's edit to an already-published story, waiting for review (or rejected). Readers keep
   // seeing the story's current fields until it's approved. At most one per story: editing again
   // replaces it. Edits to never-published stories change the story directly instead.

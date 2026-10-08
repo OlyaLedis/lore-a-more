@@ -45,6 +45,10 @@ export type PlaceResult = {
   // [west, south, east, north]
   bbox?: [number, number, number, number]
   pointLike: boolean
+  // MapTiler's place types, e.g. ["country"], ["municipality"], ["poi"] (used to choose a zoom).
+  types: string[]
+  // Its Wikidata item, e.g. "Q45347", if MapTiler knows it.
+  wikidata?: string
 }
 
 type Feature = {
@@ -55,16 +59,24 @@ type Feature = {
   place_type_name?: string[]
   center: [number, number]
   bbox?: [number, number, number, number]
-  properties?: { categories?: string[] }
+  properties?: { categories?: string[]; wikidata?: string }
 }
 
-export async function searchPlaces(query: string, signal: AbortSignal): Promise<PlaceResult[]> {
+// `near` ranks places close to that point first (e.g. the map's centre), as Felt's search does.
+export async function searchPlaces(
+  query: string,
+  signal: AbortSignal,
+  near?: { lat: number; lng: number },
+  // Only these MapTiler place types, e.g. "country"; all of them by default.
+  types: string = SEARCH_TYPES,
+): Promise<PlaceResult[]> {
   if (!KEY) throw new Error('VITE_MAPTILER_KEY is not set')
   const url = new URL(`https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json`)
   url.searchParams.set('key', KEY)
   url.searchParams.set('autocomplete', 'true')
   url.searchParams.set('limit', '8')
-  url.searchParams.set('types', SEARCH_TYPES)
+  url.searchParams.set('types', types)
+  if (near) url.searchParams.set('proximity', `${near.lng.toFixed(4)},${near.lat.toFixed(4)}`)
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`Place search failed (${res.status})`)
   const data = (await res.json()) as { features?: Feature[] }
@@ -90,6 +102,8 @@ function toPlace(f: Feature): PlaceResult {
     lng,
     bbox: f.bbox,
     pointLike: f.place_type.some((t) => POINT_TYPES.has(t)),
+    types: f.place_type,
+    wikidata: f.properties?.wikidata,
   }
 }
 
@@ -114,4 +128,38 @@ export async function placeNameAt({ lat, lng }: { lat: number; lng: number }, si
     if (match) return match.text
   }
   return null
+}
+
+// Where to centre the map on a place. For a town or other area, MapTiler gives the middle of its whole
+// area (for Eppstein, the forest north of the town), so this asks Wikidata for the town's own
+// coordinates, as Felt lands on the town centre. Falls back to MapTiler's point if Wikidata has none,
+// it's outside the place's area, or the request fails.
+export async function placeCentre(place: PlaceResult, signal: AbortSignal): Promise<{ lat: number; lng: number }> {
+  const fallback = { lat: place.lat, lng: place.lng }
+  if (place.pointLike || !place.wikidata || !/^Q\d+$/.test(place.wikidata)) return fallback
+  try {
+    const url = new URL('https://www.wikidata.org/w/api.php')
+    url.search = new URLSearchParams({
+      action: 'wbgetclaims',
+      entity: place.wikidata,
+      property: 'P625',
+      format: 'json',
+      origin: '*',
+    }).toString()
+    const res = await fetch(url, { signal })
+    if (!res.ok) return fallback
+    const data = (await res.json()) as {
+      claims?: { P625?: { mainsnak?: { datavalue?: { value?: { latitude: number; longitude: number } } } }[] }
+    }
+    const value = data.claims?.P625?.[0]?.mainsnak?.datavalue?.value
+    if (!value) return fallback
+    const { latitude: lat, longitude: lng } = value
+    if (place.bbox) {
+      const [west, south, east, north] = place.bbox
+      if (lat < south || lat > north || lng < west || lng > east) return fallback
+    }
+    return { lat, lng }
+  } catch {
+    return fallback
+  }
 }

@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api'
 import { RevisionBadge, StatusBadge } from '../components/StatusBadge'
 import { StoryActions } from '../components/StoryActions'
 import { formatDate } from '../format'
+import { storyPath } from '../storyLinks'
 
 export default function MyStories() {
   const location = useLocation()
@@ -39,7 +40,7 @@ export default function MyStories() {
             <li key={story._id} className="space-y-2 py-4">
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
-                  <Link to={`/story/${story._id}`} className="font-serif text-lg font-semibold hover:underline">
+                  <Link to={storyPath(story)} className="font-serif text-lg font-semibold hover:underline">
                     {story.title}
                   </Link>
                   <p className="text-sm text-stone-500">Submitted {formatDate(story._creationTime)}</p>
@@ -49,7 +50,7 @@ export default function MyStories() {
                   <RevisionBadge status={story.revisionStatus} />
                 </div>
               </div>
-              <StoryActions id={story._id} />
+              <StoryActions id={story._id} code={story.code} />
             </li>
           ))}
         </ul>

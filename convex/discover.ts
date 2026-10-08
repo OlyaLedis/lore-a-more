@@ -8,8 +8,8 @@ import {
   ageRange,
   categoryLabel,
   CATEGORIES,
+  storedTheme,
   storyCategory,
-  storyTheme,
   suitableFor,
   themeLabel,
   type AgeRange,
@@ -228,7 +228,8 @@ export const search = query({
     text: v.optional(v.string()),
     category: v.optional(storyCategory),
     ageRange: v.optional(ageRange),
-    theme: v.optional(storyTheme),
+    // Any saved theme, so tags on older stories still link to a search.
+    theme: v.optional(storedTheme),
   },
   handler: async (ctx, { text, category, ageRange, theme }) => {
     const terms = text?.trim() ?? "";

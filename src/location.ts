@@ -84,3 +84,46 @@ export function toSubmitLocation(d: LocationDraft | null) {
   if (!d) return undefined
   return { lat: d.lat, lng: d.lng, place: d.place.trim() || undefined, precision: d.precision }
 }
+
+// Opens the story's spot in Google Maps (its own app on phones), for directions or a closer look.
+// Uses the pin's coordinates, not the place name, so it lands on the same spot as our map.
+export function googleMapsUrl({ lat, lng }: { lat: number; lng: number }) {
+  return `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(5)},${lng.toFixed(5)}`
+}
+
+// A point in each copy of the world (west, main, east), so story dots also appear where the world
+// repeats at the sides when the map is zoomed far out, as on Felt.
+export function worldCopies({ lat, lng }: { lat: number; lng: number }) {
+  return [-360, 0, 360].map((shift) => ({ lat, lng: lng + shift }))
+}
+
+// A place handed to the story form in its address, e.g. from "Add a story" on the map:
+// /write?place=Eppstein%2C+Hesse%2C+Germany&lat=50.14&lng=8.39&spot=0. `spot=1` means a specific spot
+// (a castle, an address), which may be marked exact; otherwise it's a town or area.
+export function writeHerePath(place: { label: string; lat: number; lng: number; pointLike: boolean }) {
+  const params = new URLSearchParams({
+    place: place.label,
+    lat: place.lat.toFixed(5),
+    lng: place.lng.toFixed(5),
+    spot: place.pointLike ? '1' : '0',
+  })
+  return `/write?${params}`
+}
+
+export function draftFromParams(params: URLSearchParams): LocationDraft | null {
+  const lat = Number(params.get('lat'))
+  const lng = Number(params.get('lng'))
+  const place = (params.get('place') ?? '').trim().slice(0, 120)
+  if (!params.has('lat') || !params.has('lng') || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+  const pointLike = params.get('spot') === '1'
+  return {
+    key: `link-${lat},${lng}`,
+    place,
+    lat,
+    lng,
+    precision: pointLike ? 'exact' : 'area',
+    pointLike,
+    adjusted: false,
+  }
+}

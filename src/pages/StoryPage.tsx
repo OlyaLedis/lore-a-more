@@ -1,6 +1,6 @@
 import { useQuery } from 'convex/react'
-import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
 import { Lightbox, type Picture } from '../components/Lightbox'
@@ -10,10 +10,11 @@ import { RevisionBadge, StatusBadge } from '../components/StatusBadge'
 import { StoryActions } from '../components/StoryActions'
 import { BaseMap, StoryPin } from '../components/StoryMap'
 import { byline, formatDate } from '../format'
-import { precisionNote, zoomFor } from '../location'
+import { googleMapsUrl, precisionNote, zoomFor } from '../location'
 import { usePlaceStatus } from '../mapStatus'
 import { dotColor, mapCategory } from '../mapStories'
 import { useRecordView } from '../useRecordView'
+import { readPath, storyPath } from '../storyLinks'
 
 export default function StoryPage() {
   const { id = '' } = useParams()
@@ -25,6 +26,7 @@ export default function StoryPage() {
   useRecordView(story)
   // The story's place in the strip above the header.
   usePlaceStatus(story?.location ? { ...story.location, label: story.location.place?.split(',')[0] } : null)
+  useCanonicalPath(story)
 
   if (story === undefined) return <p className="text-stone-500">Loading…</p>
   if (story === null) {
@@ -50,7 +52,7 @@ export default function StoryPage() {
               <StatusBadge status={story.status} />
               <RevisionBadge status={mine.revisionStatus} />
             </div>
-            <StoryActions id={story._id} onDeleted={() => navigate('/mine', { replace: true })} />
+            <StoryActions id={story._id} code={story.code} onDeleted={() => navigate('/mine', { replace: true })} />
           </div>
           {mine.revisionStatus === 'pending' && (
             <p className="text-sm text-stone-600">
@@ -81,7 +83,7 @@ export default function StoryPage() {
         <StoryTags story={story} />
       </div>
       <Link
-        to={`/story/${story._id}/read`}
+        to={readPath(story)}
         className="mt-6 inline-flex items-center gap-2 rounded-full bg-stone-900 px-6 py-3 text-lg font-semibold text-white hover:bg-stone-700"
       >
         <span aria-hidden>▶</span> Read together
@@ -130,9 +132,17 @@ export default function StoryPage() {
           <BaseMap center={story.location} zoom={zoomFor(story.location.precision)} className="h-64">
             <StoryPin center={story.location} color={dotColor(mapCategory(story.category))} large title={story.title} />
           </BaseMap>
-          {precisionNote(story.location.precision) && (
-            <p className="mt-2 text-sm text-stone-500">{precisionNote(story.location.precision)}</p>
-          )}
+          <p className="mt-2 text-sm text-stone-500">
+            {precisionNote(story.location.precision) && `${precisionNote(story.location.precision)} · `}
+            <a
+              href={googleMapsUrl(story.location)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-orange-700 underline-offset-2 hover:underline"
+            >
+              Open in Google Maps ↗
+            </a>
+          </p>
         </div>
       )}
     </article>
@@ -152,5 +162,33 @@ function SourceNote({ source }: { source: Doc<'stories'>['source'] }) {
   } else {
     text = `Based on: ${source.detail}. This is the author's version, not a quotation of the source.`
   }
-  return <p className="mt-8 border-l-2 border-stone-300 pl-4 text-sm text-stone-600">{text}</p>
+  return (
+    <p className="mt-8 border-l-2 border-stone-300 pl-4 text-sm text-stone-600">
+      {text}
+      {source.kind !== 'personal' && source.url && (
+        <>
+          {' '}
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-orange-700 underline-offset-2 hover:underline"
+          >
+            Read the source ↗
+          </a>
+        </>
+      )}
+    </p>
+  )
+}
+
+// Shows the story's current address (/story/<code>/<title>) in the browser, so an older link (by
+// database id, or with a title that has since changed) still opens it but is shared in its current form.
+function useCanonicalPath(story: { _id: string; code?: string; title: string } | null | undefined) {
+  const { pathname, search, hash } = useLocation()
+  const navigate = useNavigate()
+  const canonical = story ? storyPath(story) : null
+  useEffect(() => {
+    if (canonical && decodeURIComponent(pathname) !== canonical) navigate(canonical + search + hash, { replace: true })
+  }, [canonical, pathname, search, hash, navigate])
 }

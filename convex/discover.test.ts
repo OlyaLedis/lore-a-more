@@ -19,7 +19,7 @@ describe("search and filters", () => {
       themes: ["castles", "giants"],
       location: lisbon,
     });
-    await publish(users, { title: "Grandma's kitchen", category: "folktale", themes: ["family"] });
+    await publish(users, { title: "Grandma's kitchen", category: "folktale", themes: ["love"] });
     // Pending stories never show up.
     await users.author.mutation(api.stories.submit, {
       title: "Castle draft",
@@ -42,18 +42,32 @@ describe("search and filters", () => {
 
   test("filters by category, theme, and age suitability", async () => {
     const users = await setupUsers();
-    const young = await publish(users, { title: "A", category: "folktale", ageRange: "6+", themes: ["sea"] });
-    const middle = await publish(users, { title: "B", category: "folktale", ageRange: "8+", themes: ["forest"] });
-    const older = await publish(users, { title: "C", category: "place", ageRange: "10+", themes: ["sea"] });
+    const young = await publish(users, { title: "A", category: "folktale", ageRange: "6+", themes: ["water"] });
+    const middle = await publish(users, { title: "B", category: "folktale", ageRange: "8+", themes: ["mountains"] });
+    const older = await publish(users, { title: "C", category: "place", ageRange: "10+", themes: ["water"] });
 
     const ids = async (args: Record<string, string>) =>
       new Set((await users.t.query(api.discover.search, args)).map((s) => s._id));
     expect(await ids({})).toEqual(new Set([young, middle, older]));
     expect(await ids({ category: "folktale" })).toEqual(new Set([young, middle]));
-    expect(await ids({ theme: "sea" })).toEqual(new Set([young, older]));
+    expect(await ids({ theme: "water" })).toEqual(new Set([young, older]));
     // "For ages 8+" means suitable for an 8-year-old: 6+ and 8+, not 10+.
     expect(await ids({ ageRange: "8+" })).toEqual(new Set([young, middle]));
-    expect(await ids({ ageRange: "6+", theme: "sea" })).toEqual(new Set([young]));
+    expect(await ids({ ageRange: "6+", theme: "water" })).toEqual(new Set([young]));
+  });
+
+  test("retired themes stay on older stories and still filter, but new stories can't choose them", async () => {
+    const users = await setupUsers();
+    const old = await publish(users, { title: "By the sea" });
+    // Saved before the theme list changed.
+    await users.t.run((ctx) => ctx.db.patch("stories", old, { themes: ["sea"] }));
+    const ids = async (args: Record<string, string>) =>
+      (await users.t.query(api.discover.search, args)).map((s) => s._id);
+    expect(await ids({ theme: "sea" })).toEqual([old]);
+
+    await expect(
+      users.author.mutation(api.stories.submit, { ...baseStory, themes: ["sea" as never] }),
+    ).rejects.toThrow();
   });
 
   test("old stories without a category or age still appear, but not under category or age filters", async () => {
@@ -138,8 +152,8 @@ describe("Top Picks", () => {
 
   test("recommends nearby stories and stories sharing themes the reader explored, with reasons", async () => {
     const users = await setupUsers();
-    const opened = await publish(users, { title: "Opened", themes: ["sea"], category: "place" });
-    const sameTheme = await publish(users, { title: "Sea", themes: ["sea"], category: "folktale" });
+    const opened = await publish(users, { title: "Opened", themes: ["water"], category: "place" });
+    const sameTheme = await publish(users, { title: "Sea", themes: ["water"], category: "folktale" });
     const sameCategory = await publish(users, { title: "Place", themes: [], category: "place" });
     const nearby = await publish(users, { title: "Near", location: lisbon, category: "folktale" });
     await publish(users, { title: "Unrelated", themes: ["giants"], category: "folktale" });
@@ -149,7 +163,7 @@ describe("Top Picks", () => {
     const picks = await users.reader.query(api.discover.topPicks, { here: inLisbon });
     expect(Object.fromEntries(picks.map((p) => [p._id, p.reason]))).toEqual({
       [nearby]: "Near you",
-      [sameTheme]: "Because you explored Sea",
+      [sameTheme]: "Because you explored Water",
       [sameCategory]: "More Stories of a Place",
     });
     // Already opened stories aren't recommended again.
@@ -158,9 +172,9 @@ describe("Top Picks", () => {
 
   test("respects the reader's chosen age range", async () => {
     const users = await setupUsers();
-    const opened = await publish(users, { themes: ["forest"] });
-    const forYoung = await publish(users, { themes: ["forest"], ageRange: "6+" });
-    await publish(users, { themes: ["forest"], ageRange: "10+" });
+    const opened = await publish(users, { themes: ["mountains"] });
+    const forYoung = await publish(users, { themes: ["mountains"], ageRange: "6+" });
+    await publish(users, { themes: ["mountains"], ageRange: "10+" });
 
     await users.reader.mutation(api.library.recordView, { storyId: opened });
     await users.reader.mutation(api.users.setAgeRange, { ageRange: "8+" });

@@ -25,6 +25,8 @@ with Claude Code. Set aside about 30 minutes the first time.
 8. [Day-to-day workflow](#8-day-to-day-workflow)
 9. [How the app works](#9-how-the-app-works)
 10. [Troubleshooting](#10-troubleshooting)
+11. [Put the app online](#11-put-the-app-online)
+12. [Export the stories to Felt](#12-export-the-stories-to-felt)
 
 ---
 
@@ -174,7 +176,7 @@ For the published site, set `VITE_MAPTILER_KEY` in the hosting provider's build 
 `.env.local` never leaves your computer.
 
 The same key draws the maps: MapTiler's calm **Dataviz Light** style, with StoryPlace's own soft green
-forests and grey-blue water (set in `src/mapStyle.ts`), and satellite photos when zoomed in close. To give StoryPlace its own map style,
+forests and grey-blue water (set in `src/mapStyle.ts`). To give StoryPlace its own map style,
 open [cloud.maptiler.com](https://cloud.maptiler.com/) → **Maps**, choose Dataviz Light → **Customize**, adjust
 colours and fonts, save, and copy the new map's ID into `.env.local`:
 
@@ -196,7 +198,13 @@ You need **two** Terminal tabs running at the same time, both in the `olga` fold
 | 2 | `npm run dev` | Serves the website at **http://localhost:5173** |
 
 Open [http://localhost:5173](http://localhost:5173). The feed will be empty, since your development
-database starts fresh.
+database starts fresh. To fill it with the 117 place-bound legends (each with its own page, code,
+and source), run once:
+
+```sh
+npx convex run storyCodes:backfill     # gives any older stories their permanent code
+node scripts/import-legends.ts         # adds the legends; running it again updates them
+```
 
 Stop either one with **Ctrl + C**.
 
@@ -404,3 +412,63 @@ for consistency you can also run `npx convex env set SITE_URL=http://localhost:<
 
 **Anything else:** start `claude` in the project folder and describe what you're seeing, including
 any error text. It can read the logs and fix most setup problems.
+
+---
+
+## 11. Put the app online
+
+The website runs on [Vercel](https://vercel.com) (free) and the backend on Convex's **production**
+deployment, which is separate from your development one: it has its own database and its own keys.
+`vercel.json` already tells Vercel how to build the app.
+
+**1. Get a Convex deploy key.** In the [Convex dashboard](https://dashboard.convex.dev) open the
+project → switch to **Production** (top left) → **Settings** → **Deploy keys** → **Generate a
+production deploy key**. Copy it. It's a secret: don't paste it anywhere else.
+
+**2. Create the Vercel project.** Sign in to Vercel with GitHub → **Add New… → Project** → import
+the `olga` repository. Before clicking **Deploy**, open **Environment Variables** and add:
+
+| Name | Value |
+| --- | --- |
+| `CONVEX_DEPLOY_KEY` | the deploy key from step 1 |
+| `VITE_MAPTILER_KEY` | the same MapTiler key as in your `.env.local` |
+
+Click **Deploy**. When it finishes, Vercel shows the address, e.g. `https://olga-xyz.vercel.app`.
+From now on every push to `main` updates the site, and the backend with it.
+
+**3. Sign-in keys for production.** Repeat step 4b, adding `--prod` to each `npx convex env set`,
+and set `SITE_URL` to the Vercel address instead of localhost:
+
+```sh
+npx convex env set --prod SITE_URL=https://olga-xyz.vercel.app
+```
+
+**4. Let MapTiler work on the new address.** In MapTiler → **API keys** → your key → **Allowed
+HTTP origins**, add the Vercel address. Otherwise the map and place search are refused there.
+
+**5. Fill the production database and make yourself the reviewer:**
+
+```sh
+node scripts/import-legends.ts --prod
+npx convex run --prod storyCodes:backfill
+```
+
+Then sign up on the live site and run
+`npx convex run --prod users:setAdmin '{"email":"you@example.com"}'`.
+
+---
+
+## 12. Export the stories to Felt
+
+To use the stories on a [Felt](https://felt.com) map, export them with links back to the live app:
+
+```sh
+node scripts/felt-export.ts https://olga-xyz.vercel.app --prod
+```
+
+This writes `storyplace-stories.geojson` to your Downloads folder. Drag it onto a Felt map. Each
+story has a `link` to its page (using its permanent code, so the link survives renames), plus
+category, topics, age, place, and source. To match the app's colours, style the layer by
+`category`: Local Legends `#889ADD`, Stories of a Place `#50957F`, Folktales & Myths `#EB9360`, each
+size 4 with an automatic 1px stroke and 90% opacity.
+

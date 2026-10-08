@@ -5,10 +5,11 @@ import { api } from '../../convex/_generated/api'
 import {
   AGE_RANGES,
   CATEGORIES,
-  THEMES,
+  isCurrentTheme,
+  STORED_THEMES,
   type AgeRange,
+  type StoredTheme,
   type StoryCategory,
-  type StoryTheme,
 } from '../../convex/taxonomy'
 import { SearchIcon } from '../components/Icons'
 import { PageHeader } from '../components/PageHeader'
@@ -26,7 +27,8 @@ export default function Search() {
   const [params, setParams] = useSearchParams()
   const category = oneOf<StoryCategory>(params.get('category'), CATEGORIES.map((c) => c.value))
   const age = oneOf<AgeRange>(params.get('age'), AGE_RANGES)
-  const theme = oneOf<StoryTheme>(params.get('theme'), THEMES.map((t) => t.value))
+  // Any saved theme, so a retired one on an older story's tag still filters.
+  const theme = oneOf<StoredTheme>(params.get('theme'), STORED_THEMES.map((t) => t.value))
   const [text, setText] = useState(params.get('q') ?? '')
   const [debounced, setDebounced] = useState(text)
 
@@ -98,7 +100,8 @@ export default function Search() {
           ))}
         </FilterRow>
         <FilterRow label="Theme">
-          {THEMES.map((t) => (
+          {/* Current topics, plus a retired one while it's the active filter. */}
+          {STORED_THEMES.filter((t) => isCurrentTheme(t.value) || t.value === theme).map((t) => (
             <Chip
               key={t.value}
               active={theme === t.value}

@@ -20,19 +20,25 @@
 }
 .sp-dot {
   display: block;
-  width: 7px;
-  height: 7px;
+  /* Felt's point style at 130%: 10.4px across (Felt size 4 is 8px), a 1px stroke in a darker shade of
+     the fill, 90% opacity. The fill colour is set as `color` on the element, so the stroke can be
+     derived from it. */
+  width: 10.4px;
+  height: 10.4px;
+  border: 1px solid color-mix(in srgb, currentColor 70%, black);
+  background: currentColor;
+  opacity: 0.9;
   border-radius: 9999px;
   transition: width 150ms ease, height 150ms ease;
 }
 .sp-dot-hit:hover .sp-dot {
-  width: 10px;
-  height: 10px;
+  width: 14.3px;
+  height: 14.3px;
 }
 .sp-dot-hit.is-selected .sp-dot,
 .sp-dot.sp-dot-large {
-  width: 14px;
-  height: 14px;
+  width: 18.2px;
+  height: 18.2px;
 }
 @media (prefers-reduced-motion: reduce) {
   .sp-dot {

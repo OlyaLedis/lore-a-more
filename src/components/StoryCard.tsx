@@ -1,17 +1,20 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Id } from '../../convex/_generated/dataModel'
-import { categoryLabel, categoryOne, themeLabel, type AgeRange, type StoryCategory, type StoryTheme } from '../../convex/taxonomy'
+import { categoryLabel, categoryOne, themeLabel, type AgeRange, type StoredTheme, type StoryCategory } from '../../convex/taxonomy'
 import { coverColor } from '../mapStories'
 import { PinIcon } from './Icons'
+import { storyPath } from '../storyLinks'
 
 export type CardStory = {
   _id: Id<'stories'>
+  // Permanent code used in links (see storyLinks.ts).
+  code?: string
   title: string
   author?: string
   category?: StoryCategory
   ageRange?: AgeRange
-  themes?: StoryTheme[]
+  themes?: StoredTheme[]
   place?: string
   // The cover picture and its framing, or null/absent for the colorful category cover.
   cover?: CardCover | null
@@ -143,7 +146,7 @@ export function StoryCardBody({ story, note }: { story: CardStory; note?: string
 export function StoryCard({ story, note, wide = false }: { story: CardStory; note?: string; wide?: boolean }) {
   return (
     <Link
-      to={`/story/${story._id}`}
+      to={storyPath(story)}
       aria-label={cardDescription(story, note)}
       title={story.place ? `${story.title} · ${story.place}` : story.title}
       className={`group block shrink-0 snap-start rounded-2xl ${cardFocus} ${wide ? 'w-full' : 'w-40 sm:w-48'}`}
@@ -158,7 +161,7 @@ export function StoryCard({ story, note, wide = false }: { story: CardStory; not
 export function FeaturedStoryCard({ story, note }: { story: CardStory; note?: string }) {
   return (
     <Link
-      to={`/story/${story._id}`}
+      to={storyPath(story)}
       aria-label={cardDescription(story, note)}
       className={`group flex flex-col gap-4 rounded-3xl sm:flex-row sm:items-center sm:gap-8 ${cardFocus}`}
     >

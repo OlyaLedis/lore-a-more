@@ -25,35 +25,90 @@ export function suitableFor(story: AgeRange, reader: AgeRange) {
   return AGE_RANGES.indexOf(story) <= AGE_RANGES.indexOf(reader);
 }
 
+// The topics authors choose from (up to MAX_THEMES), and readers filter by.
 export const storyTheme = v.union(
-  v.literal("castles"),
-  v.literal("sea"),
-  v.literal("forest"),
+  // Creatures
+  v.literal("dragons"),
   v.literal("giants"),
+  v.literal("little_people"),
+  v.literal("ghosts"),
   v.literal("animals"),
-  v.literal("adventure"),
-  v.literal("mystery"),
-  v.literal("family"),
+  // Characters
+  v.literal("kings_knights"),
+  v.literal("saints"),
+  v.literal("witches"),
+  v.literal("devil"),
+  // What happens
+  v.literal("treasure"),
+  v.literal("tricks"),
+  v.literal("love"),
+  v.literal("battles"),
+  v.literal("name_origin"),
+  // Places in the story
+  v.literal("castles"),
+  v.literal("churches"),
+  v.literal("mountains"),
+  v.literal("water"),
 );
 export type StoryTheme = Infer<typeof storyTheme>;
 export const MAX_THEMES = 3;
 
 export const THEMES: { value: StoryTheme; label: string }[] = [
+  { value: "dragons", label: "Dragons & serpents" },
+  { value: "giants", label: "Giants" },
+  { value: "little_people", label: "Fairies & little people" },
+  { value: "ghosts", label: "Ghosts & spirits" },
+  { value: "animals", label: "Animals" },
+  { value: "kings_knights", label: "Kings & knights" },
+  { value: "saints", label: "Saints & miracles" },
+  { value: "witches", label: "Witches & magic" },
+  { value: "devil", label: "The Devil" },
+  { value: "treasure", label: "Treasure" },
+  { value: "tricks", label: "Clever tricks" },
+  { value: "love", label: "Love" },
+  { value: "battles", label: "Battles & sieges" },
+  { value: "name_origin", label: "How it got its name" },
   { value: "castles", label: "Castles" },
+  { value: "churches", label: "Churches & monasteries" },
+  { value: "mountains", label: "Mountains, caves & forests" },
+  { value: "water", label: "Water" },
+];
+
+// Themes from the first list. Stories saved with them keep them (they still show, link to search, and
+// match search), but new stories and edits can't choose them: the edit form leaves them out so the
+// author picks current topics. They are never swapped for a guessed replacement.
+export const legacyTheme = v.union(
+  v.literal("sea"),
+  v.literal("forest"),
+  v.literal("adventure"),
+  v.literal("mystery"),
+  v.literal("family"),
+);
+export type LegacyTheme = Infer<typeof legacyTheme>;
+const LEGACY_THEMES: { value: LegacyTheme; label: string }[] = [
   { value: "sea", label: "Sea" },
   { value: "forest", label: "Forest" },
-  { value: "giants", label: "Giants" },
-  { value: "animals", label: "Animals" },
   { value: "adventure", label: "Adventure" },
   { value: "mystery", label: "Mystery" },
   { value: "family", label: "Family" },
 ];
+
+// Any theme a saved story can have.
+export const storedTheme = v.union(storyTheme, legacyTheme);
+export type StoredTheme = Infer<typeof storedTheme>;
+export const STORED_THEMES: { value: StoredTheme; label: string }[] = [...THEMES, ...LEGACY_THEMES];
+
+export function isCurrentTheme(value: StoredTheme): value is StoryTheme {
+  return THEMES.some((t) => t.value === value);
+}
 
 // Where the story comes from. A retelling is a creative version, never presented as verified history.
 export const storySource = v.object({
   kind: v.union(v.literal("personal"), v.literal("retelling"), v.literal("reference")),
   // Where the author heard or read it. Required for "reference".
   detail: v.optional(v.string()),
+  // A web link to the source, if it's online.
+  url: v.optional(v.string()),
 });
 export type StorySource = Infer<typeof storySource>;
 
@@ -75,6 +130,6 @@ export function categoryOne(value: StoryCategory) {
   return CATEGORIES.find((c) => c.value === value)?.one ?? value;
 }
 
-export function themeLabel(value: StoryTheme) {
-  return THEMES.find((t) => t.value === value)?.label ?? value;
+export function themeLabel(value: StoredTheme) {
+  return STORED_THEMES.find((t) => t.value === value)?.label ?? value;
 }

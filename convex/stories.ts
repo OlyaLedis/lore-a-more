@@ -23,6 +23,7 @@ import {
   themeLabel,
 } from "./taxonomy";
 import { internal } from "./_generated/api";
+import { newStoryCode, storyFromLink } from "./storyCodes";
 import { requireAdmin, requireUser } from "./users";
 
 const MAX_TITLE = 120;
@@ -30,7 +31,9 @@ const MAX_AUTHOR = 60;
 const MAX_BODY = 50_000;
 const MAX_PLACE = 120;
 const MAX_MAP_STORIES = 500;
+const MAP_EXCERPT = 280;
 const MAX_SOURCE = 300;
+const MAX_SOURCE_URL = 500;
 
 // What an author writes, for both new stories and edits. New input must say how precise the
 // location is, and must have a category, age range, and source.
@@ -47,9 +50,9 @@ const storyInput = {
   themes: v.array(storyTheme),
   source: storySource,
 };
-const storyInputObject = v.object(storyInput);
+export const storyInputObject = v.object(storyInput);
 
-async function cleanStoryInput(
+export async function cleanStoryInput(
   ctx: MutationCtx,
   args: Infer<typeof storyInputObject>,
   // Who is writing, and the files this story already uses (empty for a new story).
@@ -89,7 +92,10 @@ async function cleanStoryInput(
     throw new ConvexError("Name the source the story is based on.");
   if (detail && detail.length > MAX_SOURCE)
     throw new ConvexError(`Source must be ${MAX_SOURCE} characters or fewer.`);
-  const source = { kind: args.source.kind, detail };
+  const url = args.source.url?.trim() || undefined;
+  if (url && (url.length > MAX_SOURCE_URL || !isWebLink(url)))
+    throw new ConvexError("The source link must be a web address starting with https:// or http://.");
+  const source = { kind: args.source.kind, detail, url };
 
   const content = {
     title,
@@ -106,10 +112,20 @@ async function cleanStoryInput(
   return { ...content, searchText: searchTextFor(content) };
 }
 
+// Only http(s) links, so a source link can never run script when clicked.
+function isWebLink(value: string) {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "https:" || protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 type Searchable = Pick<Doc<"stories">, "title" | "author" | "location" | "category" | "themes">;
 
 // What story search matches against: title, place, category, themes, and pen name.
-function searchTextFor({ title, author, location, category, themes }: Searchable) {
+export function searchTextFor({ title, author, location, category, themes }: Searchable) {
   return [
     title,
     location?.place,
@@ -178,9 +194,24 @@ export const mapped = query({
       .take(MAX_MAP_STORIES);
     return await Promise.all(
       stories.flatMap((story) => {
-        const { _id, title, author, location, category, ageRange } = story;
+        const { _id, code, title, author, location, category, ageRange, themes } = story;
         if (!location) return [];
-        return [cardCoverOf(ctx, story).then((cover) => ({ _id, title, author, location, category, ageRange, cover }))];
+        // The opening of the story, for the map popup and map search.
+        const excerpt = story.body.length > MAP_EXCERPT ? `${story.body.slice(0, MAP_EXCERPT).trimEnd()}…` : story.body;
+        return [
+          cardCoverOf(ctx, story).then((cover) => ({
+            _id,
+            code,
+            title,
+            author,
+            location,
+            category,
+            ageRange,
+            themes,
+            excerpt,
+            cover,
+          })),
+        ];
       }),
     );
   },
@@ -189,10 +220,10 @@ export const mapped = query({
 // Approved stories are public. Unapproved ones are visible only to their author and admins.
 // Always the published version; pending edits are only visible through `editable` and the review queue.
 export const get = query({
+  // The story's code (from a link) or, for older links, its database id.
   args: { id: v.string() },
   handler: async (ctx, { id }) => {
-    const storyId = ctx.db.normalizeId("stories", id);
-    const story = storyId ? await ctx.db.get(storyId) : null;
+    const story = await storyFromLink(ctx, id);
     if (!story) return null;
     // Scenes are always present here: stories from before scenes come back as one scene.
     const withScenes = async () => ({ ...story, scenes: await withImageUrls(ctx, scenesOf(story)) });
@@ -212,14 +243,14 @@ export const editable = query({
   args: { id: v.string() },
   handler: async (ctx, { id }) => {
     const userId = await getAuthUserId(ctx);
-    const storyId = ctx.db.normalizeId("stories", id);
-    const story = storyId ? await ctx.db.get(storyId) : null;
+    const story = await storyFromLink(ctx, id);
     if (!userId || !story || story.authorId !== userId) return null;
 
     const revision = await revisionFor(ctx, story._id);
     const latest = revision ?? story;
     return {
       _id: story._id,
+      code: story.code,
       status: story.status,
       revisionStatus: revision?.status ?? null,
       title: latest.title,
@@ -265,6 +296,7 @@ export const submit = mutation({
       ...(await cleanStoryInput(ctx, args, { userId: user._id, storyFiles: new Set() })),
       authorId: user._id,
       status: "pending",
+      code: await newStoryCode(ctx),
     });
   },
 });

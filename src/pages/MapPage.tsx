@@ -1,15 +1,20 @@
 import { useQuery } from 'convex/react'
+import type { Map as LeafletMap } from 'leaflet'
 import { useEffect, useState } from 'react'
 import { Circle, Popup, useMapEvents } from 'react-leaflet'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { PageHeader } from '../components/PageHeader'
-import { BaseMap, StoryPin, type LatLng } from '../components/StoryMap'
+import { MapLocate } from '../components/MapLocate'
+import { MapSearch } from '../components/MapSearch'
+import { PlaceTrail } from '../components/PlaceTrail'
+import { BaseMap, StoryPin } from '../components/StoryMap'
 import { EUROPEAN_LEGENDS } from '../data/europeanLegends'
-import { byline } from '../format'
-import { precisionNote } from '../location'
+import { themeLabel } from '../../convex/taxonomy'
+import { googleMapsUrl, precisionNote, worldCopies, writeHerePath } from '../location'
 import { useMapStatus } from '../mapStatus'
 import { dotColor, MAP_CATEGORIES, MAP_DATA_SOURCE, mapCategory, type MapCategory, type MapStory } from '../mapStories'
+import { storyPath } from '../storyLinks'
 
 // Opened from Home's "See them on the map": /map?lat=…&lng=…&r=<km>&label=…
 function useFocusArea() {
@@ -34,12 +39,14 @@ function useLiveStories(): MapStory[] | undefined {
     id: story._id,
     title: story.title,
     category: mapCategory(story.category),
+    themes: story.themes,
     latitude: story.location.lat,
     longitude: story.location.lng,
     status: 'published',
-    shortDescription: [byline(story.author), story.location.place].filter(Boolean).join(' · '),
+    place: story.location.place,
+    shortDescription: story.excerpt,
     locationType: story.location.precision ?? 'exact',
-    href: `/story/${story._id}`,
+    href: storyPath(story),
   }))
 }
 
@@ -53,6 +60,8 @@ export default function MapPage() {
   const [hiddenCategories, setHiddenCategories] = useState<Set<MapCategory>>(new Set())
   const visible = stories?.filter((story) => !story.category || !hiddenCategories.has(story.category))
   const focus = useFocusArea()
+  const [map, setMap] = useState<LeafletMap | null>(null)
+  const navigate = useNavigate()
 
   return (
     <div>
@@ -64,7 +73,14 @@ export default function MapPage() {
             ? 'Loading stories…'
             : stories.length === 0
               ? 'No published stories are connected to a place yet.'
-              : 'Drag and zoom to explore. Tap a dot to see its story.'
+              : (
+                  <>
+                    Drag and zoom to explore. Tap a dot to see its story.{' '}
+                    <Link to="/map2" className="font-medium text-stone-700 underline-offset-2 hover:underline">
+                      Compare with the Felt map
+                    </Link>
+                  </>
+                )
         }
       />
       {focus && (
@@ -89,21 +105,16 @@ export default function MapPage() {
         }
       />
       {/* Tall enough to explore on a phone while leaving room for the heading and the tab bar.
-          Keyed on the focus so switching between an area and all stories re-frames the map. The map
-          waits for the stories so it opens already framed around them, instead of showing the whole
-          world and then jumping. */}
+          Keyed on the focus so switching between an area and all stories re-frames the map. With no
+          area chosen it opens on START_VIEW straight away; the dots appear as the stories load. */}
       <div className="relative">
-      {!focus && stories === undefined ? (
-        <div className="flex h-[calc(100dvh-15rem)] min-h-80 items-center justify-center rounded-lg border border-stone-300 bg-stone-100 text-sm text-stone-500 md:h-[36rem]">
-          Loading the map…
-        </div>
-      ) : (
       <BaseMap
         key={focus ? `${focus.center.lat},${focus.center.lng},${focus.radiusKm}` : 'all'}
         {...(focus
           ? { center: focus.center, zoom: zoomForRadius(focus.radiusKm) }
-          : startingView(stories?.map((s) => ({ lat: s.latitude, lng: s.longitude })) ?? []))}
+          : START_VIEW)}
         className="h-[calc(100dvh-15rem)] min-h-80 md:h-[36rem]"
+        onMap={setMap}
       >
         {focus && (
           <Circle
@@ -114,56 +125,83 @@ export default function MapPage() {
           />
         )}
         <ReportPosition label={focus?.label} />
-        {visible?.map((story) => (
-          <StoryPin
-            key={story.id}
-            center={{ lat: story.latitude, lng: story.longitude }}
-            color={dotColor(story.category)}
-            title={story.title}
-          >
-            <Popup>
-              <p className="!m-0 font-serif text-base font-semibold leading-snug">{story.title}</p>
-              {story.category && (
-                <p className="!mb-0 !mt-1 flex items-center gap-1.5 text-xs text-stone-500">
-                  <span
-                    aria-hidden
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: dotColor(story.category) }}
-                  />
-                  {MAP_CATEGORIES.find((c) => c.id === story.category)?.label}
-                </p>
-              )}
-              {story.place && <p className="!mb-0 !mt-1 text-xs font-medium text-stone-700">{story.place}</p>}
-              <p className="!mb-0 !mt-1 text-stone-600">{story.shortDescription}</p>
-              {precisionNote(story.locationType) && (
-                <p className="!m-0 text-xs text-stone-500">{precisionNote(story.locationType)}</p>
-              )}
-              {story.href ? (
-                <Link
-                  to={story.href}
-                  className="mt-2 inline-block rounded-full bg-orange-600 px-3.5 py-1.5 text-sm font-semibold !text-white no-underline hover:bg-orange-700"
-                >
-                  Open story
-                </Link>
-              ) : story.source ? (
-                <p className="!mb-0 !mt-2 text-xs text-stone-500">
-                  Source:{' '}
+        <CenterPopups />
+        {visible?.flatMap((story) =>
+          worldCopies({ lat: story.latitude, lng: story.longitude }).map((center) => (
+            <StoryPin
+              key={`${story.id}:${center.lng}`}
+              center={center}
+              color={dotColor(story.category)}
+              title={story.title}
+            >
+              <Popup autoPan={false}>
+                <p className="!m-0 font-serif text-base font-semibold leading-snug">{story.title}</p>
+                {story.category && (
+                  <p className="!mb-0 !mt-1 flex items-center gap-1.5 text-xs text-stone-500">
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: dotColor(story.category) }}
+                    />
+                    {MAP_CATEGORIES.find((c) => c.id === story.category)?.label}
+                  </p>
+                )}
+                {story.place && (
+                  <p className="!mb-0 !mt-1 text-xs">
+                    <PlaceTrail
+                      place={story.place}
+                      at={{ lat: story.latitude, lng: story.longitude }}
+                      precision={story.locationType}
+                      map={map}
+                    />
+                  </p>
+                )}
+                <p className="!mb-0 !mt-1 text-stone-600">{story.shortDescription}</p>
+                {story.themes && story.themes.length > 0 && (
+                  <p className="!mb-0 !mt-1 text-xs text-stone-500">{story.themes.map(themeLabel).join(' · ')}</p>
+                )}
+                <p className="!m-0 text-xs text-stone-500">
+                  {precisionNote(story.locationType) && `${precisionNote(story.locationType)} · `}
                   <a
-                    href={story.source.url}
+                    href={googleMapsUrl({ lat: story.latitude, lng: story.longitude })}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-semibold !text-orange-700 underline-offset-2 hover:underline"
                   >
-                    {story.source.author ? `${story.source.author.split(' (')[0].split(',')[0]}, ` : ''}
-                    {story.source.title}
-                    {story.source.date ? ` (${story.source.date.split(' (')[0]})` : ''} ↗
+                    Google Maps ↗
                   </a>
                 </p>
-              ) : null}
-            </Popup>
-          </StoryPin>
-        ))}
+                {story.href ? (
+                  <Link
+                    to={story.href}
+                    className="mt-2 inline-block rounded-full bg-orange-600 px-3.5 py-1.5 text-sm font-semibold !text-white no-underline hover:bg-orange-700"
+                  >
+                    Open story
+                  </Link>
+                ) : story.source ? (
+                  <p className="!mb-0 !mt-2 text-xs text-stone-500">
+                    Source:{' '}
+                    <a
+                      href={story.source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold !text-orange-700 underline-offset-2 hover:underline"
+                    >
+                      {story.source.author ? `${story.source.author.split(' (')[0].split(',')[0]}, ` : ''}
+                      {story.source.title}
+                      {story.source.date ? ` (${story.source.date.split(' (')[0]})` : ''} ↗
+                    </a>
+                  </p>
+                ) : null}
+              </Popup>
+            </StoryPin>
+          )),
+        )}
       </BaseMap>
+      <MapLocate map={map} />
+      {stories && (
+        // Signed out, /write sends people to Sign In first and then back to the form with the place.
+        <MapSearch map={map} stories={stories} onAddStory={(place) => navigate(writeHerePath(place))} />
       )}
       </div>
     </div>
@@ -201,6 +239,27 @@ function CategoryFilter({ hidden, onToggle }: { hidden: Set<MapCategory>; onTogg
   )
 }
 
+// Every popup opens in the middle of the map: the map moves so the whole popup (and the dot it points
+// at) is centred, on a phone as on a computer, instead of sliding under the buttons at the edges.
+function CenterPopups() {
+  const map = useMapEvents({
+    popupopen: (e) => {
+      // After the popup has laid out, so its height is known.
+      requestAnimationFrame(() => {
+        const el = e.popup.getElement()
+        const at = e.popup.getLatLng()
+        if (!el || !at) return
+        const tip = map.latLngToContainerPoint(at)
+        // The popup sits above the point it marks; centre the middle of the popup.
+        const middle = tip.subtract([0, el.offsetHeight / 2 + 8])
+        const size = map.getSize()
+        map.panBy(middle.subtract(size.divideBy(2)), { duration: 0.4 })
+      })
+    },
+  })
+  return null
+}
+
 // Sends the map's live centre, zoom, and scale to the strip above the header while the map moves.
 function ReportPosition({ label }: { label?: string }) {
   const { setStatus } = useMapStatus()
@@ -224,11 +283,6 @@ function ReportPosition({ label }: { label?: string }) {
   return null
 }
 
-
-// Where the map opens with no area chosen: framed around all stories, close in on a single story,
-// or the whole world when there are none yet.
-function startingView(points: LatLng[]) {
-  if (points.length === 0) return { center: [20, 0] as [number, number], zoom: 2 }
-  if (points.length === 1) return { center: points[0], zoom: 9 }
-  return { bounds: points.map((p) => [p.lat, p.lng] as [number, number]) }
-}
+// Where the map opens with no area chosen: the same view as our Felt map (felt.com, loc=50.424,6.762,
+// 7.38z), from Belgium to Frankfurt and Mannheim, where many of the stories are.
+const START_VIEW = { center: [50.424, 6.762] as [number, number], zoom: 7.4 }

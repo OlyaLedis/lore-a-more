@@ -44,7 +44,7 @@ deletes the story and its revision together. Revisions are a separate table so t
 cover this lifecycle.
 
 **Discovery and categories.** New stories and edits require `category`, `ageRange`, and `source`, and
-can have up to 3 `themes`. All four are listed in `convex/taxonomy.ts`, which the frontend imports too.
+can have up to 3 `themes` (18 topics such as Dragons & serpents, Saints & miracles, How it got its name). All four are listed in `convex/taxonomy.ts`, which the frontend imports too. The first theme list (sea, forest, adventure, mystery, family) is retired: `legacyTheme` keeps it valid on saved stories, where it still shows and filters, but new stories and edits can't choose it, and the edit form asks the author to pick current topics instead of mapping old ones.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
 the edit form asks the author instead. Home has two states. With no place chosen it shows only a centred "Discover Local Stories" heading,
 a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
@@ -79,39 +79,68 @@ added later as an optional field; there is no audio now.
 `src/mapStyle.ts`, where all zoom levels are Leaflet's, the same as the position strip shows.
 - `CalmBase` draws MapTiler "Dataviz Light" from its vector style with MapLibre (via
   `@maplibre/maplibre-gl-leaflet`, lazy-loaded so only map pages download it).
-- `storyPlaceStyle` turns it into a calm, editorial basemap (`storyPlaceColors`, `CALM`, `HIDDEN`). It
-  has warm off-white land, one soft green for large forests, light blue-grey water, hairline motorways
-  only (from Leaflet zoom 7), and only large city, region, country, and sea names. Small land uses,
-  buildings, rail, paths, minor roads, borders, and small labels are hidden. So are river areas and
-  stream lines until zoomed in. There are no drop shadows.
+- `storyPlaceStyle` restyles it to look like Felt (felt.com) (`storyPlaceColors`, `CALM`, `HIDDEN`,
+  `LABEL_COLORS`): neutral pale land, blue-grey water, a faint green for large forests, thin grey
+  country borders (dashed region borders from Leaflet zoom 8), soft pink roads (motorways, trunk and main
+  roads together from Leaflet zoom 6, none further out, as on Felt), grey country and region names, dark city names (more
+  as you zoom in; towns from Leaflet zoom 8, villages from 12), and blue sea names. Close in it follows Felt
+  too (sampled at Felt zoom 14 and 17): from Leaflet zoom 10 roads turn white except motorways, smaller
+  roads join (local streets faint at first), woods and meadows aren't tinted, only parks, nature
+  reserves, and sports grounds are green, streams are fine and pale, street names from zoom 14, pale buildings
+  with a slightly darker edge from zoom 15 (fading in just before), and dotted footpaths from zoom 16.
+  River and stream names run along the water in blue italic (`StoryPlace river names`, from the
+  `waterway` data: rivers from Leaflet zoom 9, canals from 11, streams from 14), and lake names show too. Rail and small labels stay hidden, and river areas and
+  streams wait until zoomed in. No drop shadows.
+  `/map2` embeds the Felt map itself for comparison (`FeltMapPage`, `VITE_FELT_MAP_URL`).
 - There is no legend panel on the map.
-- Stories on maps are small coloured dots (`StoryPin`, styled by `.sp-dot` in `index.css`): 7px, 10px on
-  hover, and 14px while their popup is open (`large` keeps a single story's dot at 14px). Each dot sits in
+- Stories on maps are small coloured dots (`StoryPin`, styled by `.sp-dot` in `index.css`) in Felt's point
+  style at 130%: 10.4px with a 1px stroke in a darker shade of the fill and 90% opacity; 14.3px on hover
+  and 18.2px while their popup is open (`large` keeps a single story's dot at 18.2px). Each dot sits in
   an invisible 24px hit area. There are no pin shapes or icons yet. The category colours live in
   `src/mapStories.ts` (`MAP_CATEGORIES`). The Map tab filters by `status === "published"` first, then by its
-  category filter chips, which are UI state kept separate from the stories. In development it shows
-  `EUROPEAN_LEGENDS` (`src/data/europeanLegends.ts`: 92 real legends). Each has a `source` record
-  (title, URL, author or institution, date, source type, the place as the source names it, and
-  confidence), shown in its popup. Prefer archives and published collections over Wikipedia, which is
-  for discovery only; the file's header lists the order. Coordinates come from the site's Wikipedia
-  article. Every story must be place-bound: tied to a real, identifiable
-  place that matters to the story, named in `place`. Don't add famous myths without a specific anchor
-  (see the file's header). Production shows the app's published stories.
-  `VITE_MAP_DATA=legends|live` overrides this. Card covers without a picture use the same colour
-  as the story's map dot (`coverColor`). There is no Personal Stories category.
-- It also adds satellite photos from zoom `SATELLITE_FROM_ZOOM` (8, about a 20 km scale bar) and MapTiler
-  contour lines (index lines, minor lines from zoom 11, height labels from zoom 12). These sit below the
-  place names.
+  category filter chips, which are UI state kept separate from the stories. It shows the app's
+  published stories, which include the curated legends (`VITE_MAP_DATA=legends` shows the file
+  directly). Card covers without a picture use the same colour as the story's map dot (`coverColor`).
+  There is no Personal Stories category.
+- No satellite photos and, like Felt, no contour lines: the drawn map stays at every zoom.
+- Furthest zoom out, as on Felt: `OneWorld` sets the minimum zoom so the whole world (Arctic to
+  Antarctica) fills the map's height (`zoomSnap` 0.1, recalculated on resize). `maxBounds` stops panning
+  north and south; east–west the world repeats (`worldCopyJump`), and the Map tab draws each story in
+  all three copies (`worldCopies` in `src/location.ts`).
 - MapLibre runs one zoom level below Leaflet, so the style converts with `z()`.
 - MapLibre's worker is pointed at the bundled file with `setWorkerUrl`.
-- Until MapLibre loads, or without WebGL, raster tiles show, and Leaflet switches in satellite photos
-  (no contours).
+- Until MapLibre loads, or without WebGL, raster tiles show.
 - In dev builds the MapLibre map is available as `window.storyplaceMap` for debugging.
 - `VITE_MAPTILER_MAP_STYLE` swaps in a custom MapTiler map, with no recolouring. Without a key the app
   falls back to OpenStreetMap.
-- The Map tab waits for the stories and opens already framed around them (`startingView`), so it never
-  starts on the world and then jumps.
+- The Map tab opens on `START_VIEW` (50.424, 6.762 at zoom 7.4, the same view as our Felt map) unless an
+  area is chosen (`/map?lat=…`); the dots appear as the stories load.
 - Pins and other map furniture have no drop shadows.
+
+**Map search.** The Map tab has a Felt-style search (`src/components/MapSearch.tsx`): a button on the
+map opens a panel listing Locations (MapTiler geocoding, ranked near the map's centre via `proximity`)
+and StoryPlace Stories (matched in the browser on title, then place, then description, ignoring accents
+and case, with the matched part in bold). Choosing a place flies to it at zoom 14 and points a small card at it (name and region), as
+Felt does. Towns and other areas are centred on their Wikidata coordinates (`placeCentre`), because
+MapTiler gives the middle of the whole area; it falls back to MapTiler's point; choosing a story flies to its
+dot and opens its popup. Arrow keys, Enter, and Escape work. `stories.mapped` returns an `excerpt` (the
+first 280 characters) for the popup and this search. `BaseMap`'s `onMap` hands the Leaflet map to the page. The place card has "+ Add a story", which
+opens `/write?place=…&lat=…&lng=…&spot=0|1` (`writeHerePath`, read by `draftFromParams`) so the form starts
+at that place; signed out, `RequireAuth` sends people to Sign In first and back. In a story's popup, each
+part of the place line is a link (`PlaceTrail`): the first zooms to the story's pin, wider parts (town,
+country) are looked up by name near the pin and framed, falling back to zooming out around the pin. Clicking one closes the popup. Every popup on the Map tab
+opens centred in the map (`CenterPopups` pans so the popup's middle is at the map's middle; popups use
+`autoPan={false}`).
+
+**Zoom rules.** Whenever the map zooms to a place (map search, the popup place links, the place card),
+`src/placeZoom.ts` picks the zoom by MapTiler's place type (`PlaceResult.types`): countries framed up to
+zoom 7, regions up to 9, counties and districts up to 11, towns centred at 14 (Felt's zoom; big cities
+wider than 0.2° are framed up to 13), neighbourhoods 15, specific places (castles, peaks) 16, streets
+and addresses 17. A story goes to 16 if exact, 14 for an area, 13 if uncertain (`storyZoom`).
+
+**Locate me.** Under the map search button, `MapLocate` (Felt-style arrow) asks for the position only
+when tapped (`useHere().request()`, rounded to about 1 km, never stored), flies there at zoom 13, and
+marks it with a blue dot and a faint 1 km circle. Browsers only allow location on https or localhost.
 
 **Position strip.** `MapStatusBar` is a thin dark strip of map readouts at the top of the header (Felt-style):
 LAT/LON, zoom, place, and a scale bar. Pages report into `MapStatusContext` (`src/mapStatus.ts`): the Map tab
@@ -161,6 +190,26 @@ verify email ownership.
 **Users table.** `convex/schema.ts` spreads `authTables` and then overrides `users` to add `isAdmin`.
 The override must keep all of Convex Auth's `users` fields and the `email` / `phone` indexes. Check
 `node_modules/@convex-dev/auth/dist/server/implementation/types.js` when upgrading `@convex-dev/auth`.
+
+**Story codes and links.** Every story has a permanent public `code` like `SP-7K3QX9`
+(`convex/storyCodes.ts`: 6 characters without 0/O/1/I/L, unique via the `by_code` index, set by `submit`
+and never changed; `storyCodes:backfill` gives older stories one). Links are `/story/<code>/<title-slug>`
+(`src/storyLinks.ts`: `storyPath`, `readPath`, `editPath`); only the code matters. `stories.get` and
+`editable` take a code (any letter case) or, for old links, a database id (`storyFromLink`), and the
+story page replaces the address with the current one. Always build story links with `storyPath`, never
+from `_id`. A story's `source` can have a `url` (http/https only), shown as "Read the source".
+
+**Curated legends.** `src/data/europeanLegends.ts` holds 117 real place-bound legends. Each has a
+`source` record (title, URL, author or institution, date, source type, the place as the source names
+it, and confidence), up to 3 `themes`, and an `ageRange`. Prefer archives and published collections
+over Wikipedia, which is for discovery only; the file's header lists the order. Coordinates come from
+the site's Wikipedia or Wikidata entry. Every story must be place-bound: tied to a real, identifiable
+place that matters to the story, named in `place`. Don't add famous myths without a specific anchor.
+`node scripts/import-legends.ts [--prod]` turns them into published stories (`legends:importLegends`,
+owned by a "StoryPlace" account with no sign-in, matched by `importId`, so re-running updates them and
+keeps their codes). `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
+with a `link` to each story. Hosting: Vercel builds with `npx convex deploy --cmd 'npm run build'`
+(`vercel.json`); README section 11 has the production setup.
 
 **Story locations.** `stories.location` is optional: `{ lat, lng, place?, precision? }`. `precision`
 is `"exact" | "area" | "uncertain"`. It's optional in the schema because older stories don't have it,

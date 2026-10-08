@@ -17,7 +17,7 @@ const edited = {
   title: "The old mill",
   scenes: oneScene("Once upon a time, by the river."),
   ageRange: "8+" as const,
-  themes: ["forest" as const],
+  themes: ["mountains" as const],
   location: { lat: 49.84, lng: 24.03, place: "Lviv, Ukraine", precision: "area" as const },
 };
 const page = { paginationOpts: { numItems: 10, cursor: null } };
@@ -258,5 +258,48 @@ describe("locations chosen on the map", () => {
       lng: 9.6697,
       precision: "uncertain",
     });
+  });
+});
+
+describe("story codes", () => {
+  test("every new story gets a permanent code that opens it, and edits keep it", async () => {
+    const { t, author, admin, id } = await publishedStory();
+    const code = (await t.query(api.stories.get, { id }))!.code!;
+    expect(code).toMatch(/^SP-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/);
+
+    // By code, in any letter case, and by the old database id.
+    expect((await t.query(api.stories.get, { id: code }))?._id).toBe(id);
+    expect((await t.query(api.stories.get, { id: code.toLowerCase() }))?._id).toBe(id);
+    expect(await t.query(api.stories.get, { id: "SP-222222" })).toBeNull();
+
+    await author.mutation(api.stories.update, { id, ...edited });
+    const [revision] = await pendingRevisionIds(admin);
+    await admin.mutation(api.stories.reviewRevision, { id: revision, decision: "approved" });
+    expect((await t.query(api.stories.get, { id: code }))?.title).toBe("The old mill");
+  });
+
+  test("two stories never share a code", async () => {
+    const { t, author } = await setup();
+    const ids = await Promise.all([1, 2, 3].map(() => author.mutation(api.stories.submit, story)));
+    const codes = await t.run(async (ctx) => Promise.all(ids.map(async (id) => (await ctx.db.get(id))!.code)));
+    expect(new Set(codes).size).toBe(3);
+  });
+});
+
+describe("source links", () => {
+  test("a web link to the source is kept; other kinds of links are refused", async () => {
+    const { t, author } = await setup();
+    const id = await author.mutation(api.stories.submit, {
+      ...story,
+      source: { kind: "reference", detail: "Grimm, Deutsche Sagen", url: " https://de.wikisource.org/wiki/Erbauung_Frankfurts " },
+    });
+    expect((await t.run((ctx) => ctx.db.get(id)))?.source?.url).toBe("https://de.wikisource.org/wiki/Erbauung_Frankfurts");
+
+    await expect(
+      author.mutation(api.stories.submit, {
+        ...story,
+        source: { kind: "reference", detail: "x", url: "javascript:alert(1)" },
+      }),
+    ).rejects.toThrow("web address");
   });
 });

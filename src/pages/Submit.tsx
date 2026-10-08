@@ -1,11 +1,12 @@
 import { useMutation, useQuery } from 'convex/react'
 import { ConvexError } from 'convex/values'
 import { useId, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import {
   AGE_RANGES,
   CATEGORIES,
+  isCurrentTheme,
   MAX_THEMES,
   SOURCE_KINDS,
   THEMES,
@@ -19,7 +20,7 @@ import { LocationField } from '../components/LocationField'
 import { ReadingView } from '../components/ReadingView'
 import { SceneEditor } from '../components/SceneEditor'
 import { coverForSubmit, coverProblem, effectiveCover, initialCover, type CoverDraft } from '../covers'
-import { draftFromSaved, locationProblem, toSubmitLocation, type LocationDraft } from '../location'
+import { draftFromParams, draftFromSaved, locationProblem, toSubmitLocation, type LocationDraft } from '../location'
 import { draftsFromScenes, emptyScene, scenesForSubmit, scenesProblem, type DraftScene } from '../scenes'
 
 const inputClass =
@@ -53,9 +54,17 @@ type Initial = {
 export default function Submit() {
   const submit = useMutation(api.stories.submit)
   const navigate = useNavigate()
+  // A place chosen on the map ("Add a story" in the map search) starts the form with that location.
+  const [params] = useSearchParams()
+  const [startPlace] = useState(() => draftFromParams(params))
   return (
     <StoryForm
       heading="Add a Story"
+      initial={
+        startPlace
+          ? { title: '', author: '', scenes: [emptyScene()], cover: { kind: 'colors' }, location: startPlace, themes: [] }
+          : undefined
+      }
       intro="A moderator reads every submission. Your story will appear on StoryPlace once it's approved."
       submitLabel="Submit for review"
       onSave={async (values) => {
@@ -88,6 +97,9 @@ export function EditStory() {
   const published = story.status === 'approved'
   // Stories written before categories existed have none; the author picks them, we never guess.
   const missingDetails = !story.category || !story.ageRange || !story.source
+  // Retired themes aren't offered any more, so the author picks current ones instead.
+  const themes = (story.themes ?? []).filter(isCurrentTheme)
+  const retiredThemes = themes.length < (story.themes ?? []).length
   return (
     <StoryForm
       // Remount if the story changes underneath, so the form never mixes two versions.
@@ -105,7 +117,9 @@ export function EditStory() {
             ? 'Your last changes were not approved. You can revise them and submit again.'
             : missingDetails
               ? 'This story was written before categories, ages, and sources were added. Please choose them below.'
-              : undefined
+              : retiredThemes
+                ? 'The list of themes has changed. Please choose your story’s themes again below.'
+                : undefined
       }
       submitLabel="Submit changes for review"
       initial={{
@@ -118,7 +132,7 @@ export function EditStory() {
         location: story.location ? draftFromSaved(story.location) : null,
         category: story.category,
         ageRange: story.ageRange,
-        themes: story.themes ?? [],
+        themes,
         source: story.source,
       }}
       onCancel={() => navigate(-1)}
@@ -189,7 +203,11 @@ function StoryForm({
         category,
         ageRange,
         themes,
-        source: { kind: source.kind, detail: source.detail?.trim() || undefined },
+        source: {
+          kind: source.kind,
+          detail: source.detail?.trim() || undefined,
+          url: source.kind === 'personal' ? undefined : source.url?.trim() || undefined,
+        },
       })
     } catch (err) {
       setError(err instanceof ConvexError ? String(err.data) : 'Something went wrong. Please try again.')
@@ -342,7 +360,7 @@ function StoryForm({
               key={k.value}
               name="sourceKind"
               checked={source?.kind === k.value}
-              onChange={() => setSource({ kind: k.value, detail: source?.detail })}
+              onChange={() => setSource({ kind: k.value, detail: source?.detail, url: source?.url })}
               label={k.label}
               hint={k.hint}
               required
@@ -366,6 +384,21 @@ function StoryForm({
                   ? 'e.g. “Legends of the Coast”, M. Silva, 1998'
                   : 'e.g. my grandmother, a village festival'
               }
+            />
+          </label>
+        )}
+        {source && source.kind !== 'personal' && (
+          <label className="mt-3 block">
+            <span className="mb-1 block text-sm font-medium">
+              Link to the source <span className="font-normal text-stone-500">(optional)</span>
+            </span>
+            <input
+              type="url"
+              className={inputClass}
+              value={source.url ?? ''}
+              onChange={(e) => setSource({ ...source, url: e.target.value })}
+              maxLength={500}
+              placeholder="https://…"
             />
           </label>
         )}

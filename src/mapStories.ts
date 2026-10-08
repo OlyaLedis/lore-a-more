@@ -1,14 +1,15 @@
 // What the Map tab draws: a simple list of stories as small coloured dots, from real legends
 // (src/data/europeanLegends.ts) or the app's published stories.
-import type { StoryCategory } from '../convex/taxonomy'
+import type { AgeRange, StoredTheme, StoryCategory } from '../convex/taxonomy'
 
 export type MapCategory = 'local-legend' | 'story-of-place' | 'folktale-myth'
 
-// Colours for the dots and the category filter, the same on the light map and satellite.
+// Colours for the dots, the category filter, and colour card covers, matching the Felt map's point
+// styles. Dots draw them at 90% opacity with a 1px stroke in a darker shade (see .sp-dot).
 export const MAP_CATEGORIES: { id: MapCategory; label: string; color: string }[] = [
-  { id: 'local-legend', label: 'Local Legends', color: '#D991EA' },
-  { id: 'story-of-place', label: 'Stories of a Place', color: '#A5EF9D' },
-  { id: 'folktale-myth', label: 'Folktales & Myths', color: '#EB9568' },
+  { id: 'local-legend', label: 'Local Legends', color: '#889ADD' },
+  { id: 'story-of-place', label: 'Stories of a Place', color: '#50957F' },
+  { id: 'folktale-myth', label: 'Folktales & Myths', color: '#EB9360' },
 ]
 
 export const CATEGORY_COLORS = Object.fromEntries(MAP_CATEGORIES.map((c) => [c.id, c.color])) as Record<MapCategory, string>
@@ -23,6 +24,9 @@ export type MapStory = {
   id: string
   title: string
   category: MapCategory | null
+  // Up to three topics (see THEMES in convex/taxonomy.ts).
+  themes?: StoredTheme[]
+  ageRange?: AgeRange
   latitude: number
   longitude: number
   status: MapStoryStatus
@@ -79,9 +83,9 @@ export function coverColor(category: StoryCategory | undefined) {
   return dotColor(mapCategory(category))
 }
 
-// Development shows the European legends; production shows the app's published stories.
-// VITE_MAP_DATA=legends|live overrides.
+// The map shows the app's published stories, which include the imported legends
+// (scripts/import-legends.ts). VITE_MAP_DATA=legends shows the curated file directly instead.
 export type MapData = 'legends' | 'live'
-const MAP_DATA = import.meta.env.VITE_MAP_DATA as string | undefined
-export const MAP_DATA_SOURCE: MapData =
-  MAP_DATA === 'legends' || MAP_DATA === 'live' ? MAP_DATA : import.meta.env.DEV ? 'legends' : 'live'
+// `?.` so scripts run by Node (no Vite) can import this file too.
+const MAP_DATA = import.meta.env?.VITE_MAP_DATA as string | undefined
+export const MAP_DATA_SOURCE: MapData = MAP_DATA === 'legends' ? 'legends' : 'live'

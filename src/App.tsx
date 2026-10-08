@@ -6,6 +6,7 @@ import Account from './pages/Account'
 import Feed from './pages/Feed'
 import Home from './pages/Home'
 import Library from './pages/Library'
+import FeltMapPage from './pages/FeltMapPage'
 import MapPage from './pages/MapPage'
 import MyStories from './pages/MyStories'
 import PlaceAll from './pages/PlaceAll'
@@ -31,8 +32,12 @@ export default function App() {
         <Route path="/library" element={<Library />} />
         <Route path="/search" element={<Search />} />
         <Route path="/map" element={<MapPage />} />
+        {/* The Felt version of the map, kept alongside ours to compare. */}
+        <Route path="/map2" element={<FeltMapPage />} />
         <Route path="/signin" element={<Narrow><SignIn /></Narrow>} />
         <Route path="/story/:id" element={<Narrow><StoryPage /></Narrow>} />
+        {/* /story/<code>/<title>: the title part is only for people (see storyLinks.ts). */}
+        <Route path="/story/:id/:slug" element={<Narrow><StoryPage /></Narrow>} />
         {/* Full-screen; drawn above the app's bars. */}
         <Route path="/story/:id/read" element={<ReadPage />} />
         <Route

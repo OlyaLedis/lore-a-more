@@ -4,11 +4,20 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { editPath } from '../storyLinks'
 
 const linkClass = 'text-sm font-medium text-stone-600 underline hover:text-stone-900'
 
 // Edit and Delete for the story's author. The server checks ownership again on every change.
-export function StoryActions({ id, onDeleted }: { id: Id<'stories'>; onDeleted?: () => void }) {
+export function StoryActions({
+  id,
+  code,
+  onDeleted,
+}: {
+  id: Id<'stories'>
+  code?: string
+  onDeleted?: () => void
+}) {
   const remove = useMutation(api.stories.remove)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -59,7 +68,7 @@ export function StoryActions({ id, onDeleted }: { id: Id<'stories'>; onDeleted?:
 
   return (
     <div className="flex gap-4">
-      <Link to={`/story/${id}/edit`} className={linkClass}>
+      <Link to={editPath({ _id: id, code })} className={linkClass}>
         Edit
       </Link>
       <button type="button" onClick={() => setConfirming(true)} className={linkClass}>

@@ -6,6 +6,7 @@ import { cardCoverOf } from "./covers";
 export async function toCard(ctx: QueryCtx, story: Doc<"stories">) {
   return {
     _id: story._id,
+    code: story.code,
     title: story.title,
     author: story.author,
     category: story.category,
