@@ -17,6 +17,7 @@ import {
   type StoryTheme,
 } from '../../convex/taxonomy'
 import { CoverPicker } from '../components/CoverPicker'
+import { ArrowLeftIcon } from '../components/Icons'
 import { LocationField } from '../components/LocationField'
 import { ReadingView } from '../components/ReadingView'
 import { SceneEditor } from '../components/SceneEditor'
@@ -61,6 +62,9 @@ export default function Submit() {
   return (
     <StoryForm
       heading="Add a Story"
+      // An arrow back to where the form was opened from (the map reopens where it was left). With no page
+      // before it in this tab (a link opened directly), there's nothing to go back to.
+      onBack={(window.history.state as { idx?: number } | null)?.idx ? () => navigate(-1) : undefined}
       initial={
         startPlace
           ? { title: '', author: '', scenes: [emptyScene()], cover: { kind: 'colors' }, location: startPlace, themes: [] }
@@ -151,6 +155,7 @@ export function EditStory() {
 
 function StoryForm({
   heading,
+  onBack,
   intro,
   notice,
   submitLabel,
@@ -165,6 +170,7 @@ function StoryForm({
   initial?: Initial
   onSave: (values: StoryValues) => Promise<void>
   onCancel?: () => void
+  onBack?: () => void
 }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [author, setAuthor] = useState(initial?.author ?? '')
@@ -223,6 +229,16 @@ function StoryForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-7">
       <div>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+          >
+            <ArrowLeftIcon className="h-4 w-4" />
+            Back
+          </button>
+        )}
         <h1 className="font-serif text-4xl font-bold tracking-tight">{heading}</h1>
         <p className="mt-2 text-stone-500">{intro}</p>
       </div>

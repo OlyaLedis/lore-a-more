@@ -6,15 +6,18 @@ import type { Doc } from '../../convex/_generated/dataModel'
 import { Lightbox, type Picture } from '../components/Lightbox'
 import { ReaderActions, SeasonalToggle } from '../components/ReaderActions'
 import { StoryTags } from '../components/StoryCard'
+import { TypePhrase } from '../components/StoryType'
+import { PlaceTrail } from '../components/PlaceTrail'
 import { RevisionBadge, StatusBadge } from '../components/StatusBadge'
 import { StoryActions } from '../components/StoryActions'
 import { BaseMap, StoryPin } from '../components/StoryMap'
+import { categoryLabel, isCurrentCategory } from '../../convex/taxonomy'
 import { byline, formatDate } from '../format'
 import { googleMapsUrl, precisionNote, zoomFor } from '../location'
 import { usePlaceStatus } from '../mapStatus'
 import { dotColor, mapCategory } from '../mapStories'
 import { useRecordView } from '../useRecordView'
-import { readPath, storyPath } from '../storyLinks'
+import { readPath, storyKey, storyPath } from '../storyLinks'
 
 export default function StoryPage() {
   const { id = '' } = useParams()
@@ -73,12 +76,35 @@ export default function StoryPage() {
           <StatusBadge status={story.status} />
         </div>
       )}
-      <h1 className="mt-4 font-serif text-4xl font-bold leading-tight">{story.title}</h1>
-      <p className="mt-2 text-stone-500">
-        {byline(story.author)} · {formatDate(story.approvedAt ?? story._creationTime)}
-        {story.editedAt && ` · edited ${formatDate(story.editedAt)}`}
-        {story.location?.place && ` · ${story.location.place}`}
-      </p>
+      {/* The story type as on the map's story sheet ("A wonder tale"), linking to more of that type. A
+          retired type shows its old name, plainly. */}
+      {story.category && (
+        <p className="mt-4">
+          {isCurrentCategory(story.category) ? (
+            <Link to={`/search?category=${story.category}`} className="underline-offset-4 hover:underline">
+              <TypePhrase category={mapCategory(story.category)} className="text-lg" />
+            </Link>
+          ) : (
+            <span className="font-serif text-lg italic text-stone-500">{categoryLabel(story.category)}</span>
+          )}
+        </p>
+      )}
+      <h1 className={`${story.category ? 'mt-0.5' : 'mt-4'} font-serif text-4xl font-bold leading-tight`}>{story.title}</h1>
+      {story.location?.place && (
+        <p className="mt-2 text-stone-500">
+          {/* Published stories are on the Map tab: each part of the place shows it there. */}
+          {story.status === 'approved' ? (
+            <PlaceTrail
+              place={story.location.place}
+              at={story.location}
+              precision={story.location.precision}
+              linkTo={(part) => `/map?${new URLSearchParams({ story: storyKey(story), part: String(part) })}`}
+            />
+          ) : (
+            story.location.place
+          )}
+        </p>
+      )}
       <div className="mt-4">
         <StoryTags story={story} />
       </div>
@@ -126,6 +152,13 @@ export default function StoryPage() {
         </section>
       ))}
       <Lightbox picture={enlarged} onClose={() => setEnlarged(null)} />
+      {/* Below the text: the writer's pen name (none for the curated legends, whose source note says where
+          they come from) and the date. */}
+      <p className="mt-8 text-sm text-stone-500">
+        {!story.importId && `By ${byline(story.author)} · `}
+        {formatDate(story.approvedAt ?? story._creationTime)}
+        {story.editedAt && ` · edited ${formatDate(story.editedAt)}`}
+      </p>
       <SourceNote source={story.source} />
       {story.location && (
         <div className="mt-10">

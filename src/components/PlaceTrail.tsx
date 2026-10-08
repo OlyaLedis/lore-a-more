@@ -1,58 +1,44 @@
 import type { Map as LeafletMap } from 'leaflet'
 import { Fragment, useState } from 'react'
-import { geocodingEnabled, placeCentre, searchPlaces, type PlaceResult } from '../geocoding'
+import { Link } from 'react-router-dom'
 import type { Precision } from '../location'
-import { flyToView, placeView, storyZoom } from '../placeZoom'
+import { placeParts, zoomToPart } from '../placeTrail'
 
 // A story's place line where each part zooms the map to it, from the spot outward:
 // "Old Town Hall, Brno, Czechia": Old Town Hall → the story's spot; Brno → the city; Czechia → the
-// country, each at the zoom for its kind of place (see placeZoom.ts). The first part is the story's own pin. Wider parts are looked up by name (with the rest of
-// the line, near the pin), and the map frames the result; if that fails it zooms out around the pin.
-// Clicking one closes the popup, so the place is in view.
+// country, each at the zoom for its kind of place (see placeZoom.ts). On the map's story sheet the
+// parts are buttons that move that map (`map`), and clicking one closes the sheet so the place is in
+// view. On the story page they're links to the Map tab (`linkTo`), which does the same zoom there.
 export function PlaceTrail({
   place,
   at,
   precision,
   map,
   onZoom,
+  linkTo,
 }: {
   place: string
   at: { lat: number; lng: number }
   precision?: Precision
-  map: LeafletMap | null
+  map?: LeafletMap | null
   // Called when a part is clicked, e.g. to close the story's sheet so the place is in view.
   onZoom?: () => void
+  // Instead of moving a map on this page: the address of the Map tab zoomed to part `i`.
+  linkTo?: (i: number) => string
 }) {
-  const parts = place
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean)
+  const parts = placeParts(place)
   const [busy, setBusy] = useState<number | null>(null)
+  const linkClass = 'underline decoration-stone-300 underline-offset-2 hover:text-stone-950 hover:decoration-stone-700'
+  const title = (i: number) => (i === 0 ? `Show the story's place on the map` : `Show ${parts[i]} on the map`)
 
   async function zoomTo(i: number) {
     if (!map) return
     // The popup or sheet steps aside so the place it zooms to can be seen.
     map.closePopup()
     onZoom?.()
-    if (i === 0) {
-      map.flyTo([at.lat, at.lng], storyZoom(precision), { duration: 0.8 })
-      return
-    }
-    const last = i === parts.length - 1
     setBusy(i)
-    const found = await lookUp(parts.slice(i).join(', '), at, last)
+    await zoomToPart(map, parts, i, at, precision)
     setBusy(null)
-    if (found) {
-      // By what kind of place it is (see placeZoom.ts): a country framed whole, a town at zoom 14.
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 1500)
-      const centre = await placeCentre(found, controller.signal)
-      clearTimeout(timer)
-      flyToView(map, placeView(found, centre))
-    } else {
-      // Not found: zoom out around the story's pin instead.
-      map.flyTo([at.lat, at.lng], last ? 5 : 10, { duration: 0.8 })
-    }
   }
 
   return (
@@ -60,40 +46,22 @@ export function PlaceTrail({
       {parts.map((part, i) => (
         <Fragment key={i}>
           {i > 0 && ', '}
-          <button
-            type="button"
-            onClick={() => void zoomTo(i)}
-            title={i === 0 ? `Zoom to the story's place` : `Zoom to ${part}`}
-            className={`underline decoration-stone-300 underline-offset-2 hover:text-stone-950 hover:decoration-stone-700 ${
-              busy === i ? 'cursor-wait opacity-60' : ''
-            }`}
-          >
-            {part}
-          </button>
+          {linkTo ? (
+            <Link to={linkTo(i)} title={title(i)} className={linkClass}>
+              {part}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void zoomTo(i)}
+              title={title(i)}
+              className={`${linkClass} ${busy === i ? 'cursor-wait opacity-60' : ''}`}
+            >
+              {part}
+            </button>
+          )}
         </Fragment>
       ))}
     </>
   )
-}
-
-// The named place around the pin: the result whose area contains the pin, else the first. The last
-// part of a place line is usually the country, so that's tried as a country first.
-async function lookUp(query: string, at: { lat: number; lng: number }, last: boolean): Promise<PlaceResult | null> {
-  if (!geocodingEnabled) return null
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 3000)
-  try {
-    let results = last ? await searchPlaces(query, controller.signal, at, 'country') : []
-    if (results.length === 0) results = await searchPlaces(query, controller.signal, at)
-    const contains = (r: PlaceResult) => {
-      if (!r.bbox) return false
-      const [west, south, east, north] = r.bbox
-      return at.lat >= south && at.lat <= north && at.lng >= west && at.lng <= east
-    }
-    return results.find(contains) ?? results[0] ?? null
-  } catch {
-    return null
-  } finally {
-    clearTimeout(timer)
-  }
 }

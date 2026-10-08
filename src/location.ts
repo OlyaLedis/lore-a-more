@@ -97,19 +97,9 @@ export function worldCopies({ lat, lng }: { lat: number; lng: number }) {
   return [-360, 0, 360].map((shift) => ({ lat, lng: lng + shift }))
 }
 
-// A place handed to the story form in its address, e.g. from "Add a story" on the map:
+// A place handed to the story form in its address:
 // /write?place=Eppstein%2C+Hesse%2C+Germany&lat=50.14&lng=8.39&spot=0. `spot=1` means a specific spot
 // (a castle, an address), which may be marked exact; otherwise it's a town or area.
-export function writeHerePath(place: { label: string; lat: number; lng: number; pointLike: boolean }) {
-  const params = new URLSearchParams({
-    place: place.label,
-    lat: place.lat.toFixed(5),
-    lng: place.lng.toFixed(5),
-    spot: place.pointLike ? '1' : '0',
-  })
-  return `/write?${params}`
-}
-
 export function draftFromParams(params: URLSearchParams): LocationDraft | null {
   const lat = Number(params.get('lat'))
   const lng = Number(params.get('lng'))

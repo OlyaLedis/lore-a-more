@@ -2,9 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Id } from '../../convex/_generated/dataModel'
 import {
-  categoryLabel,
   categoryOne,
-  isCurrentCategory,
   themeLabel,
   type AgeRange,
   type StoredCategory,
@@ -256,29 +254,28 @@ export function TwoCardGrid({ stories }: { stories: CardStory[] }) {
 }
 
 // Category, age, and themes as links into Search.
-export function StoryTags({ story }: { story: Pick<CardStory, 'category' | 'ageRange' | 'themes'> }) {
-  const chip = 'rounded-full border border-stone-300 px-3 py-1 text-sm text-stone-700 hover:border-stone-900'
+// Under the story page's title: the age symbol and the topics, in the map story sheet's style (quiet
+// text joined by dots), each a link to Search. The story type sits above the title (TypePhrase).
+export function StoryTags({ story }: { story: Pick<CardStory, 'ageRange' | 'themes'> }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* A retired category still shows, but isn't a search link any more. */}
-      {story.category &&
-        (isCurrentCategory(story.category) ? (
-          <Link to={`/search?category=${story.category}`} className={chip}>
-            {categoryLabel(story.category)}
-          </Link>
-        ) : (
-          <span className={chip}>{categoryLabel(story.category)}</span>
-        ))}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-500">
       {story.ageRange && (
         <Link to={`/search?age=${encodeURIComponent(story.ageRange)}`} className="rounded-full hover:opacity-90">
           <AgeSymbol age={story.ageRange} />
         </Link>
       )}
-      {story.themes?.map((theme) => (
-        <Link key={theme} to={`/search?theme=${theme}`} className={chip}>
-          #{themeLabel(theme)}
-        </Link>
-      ))}
+      {story.themes && story.themes.length > 0 && (
+        <p>
+          {story.themes.map((theme, i) => (
+            <span key={theme}>
+              {i > 0 && ' · '}
+              <Link to={`/search?theme=${theme}`} className="underline-offset-2 hover:text-stone-900 hover:underline">
+                {themeLabel(theme)}
+              </Link>
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   )
 }

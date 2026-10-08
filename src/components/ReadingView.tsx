@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { byline } from '../format'
+import { CloseIcon } from './Icons'
 import { Lightbox, type Picture } from './Lightbox'
 
 export type ReadingScene = {
@@ -71,7 +72,7 @@ export function ReadingView({
   initialAnchor,
   onPosition,
   onClose,
-  closeLabel = 'Close reading mode',
+  closeLabel = 'Close',
 }: {
   title: string
   author?: string
@@ -340,14 +341,7 @@ export function ReadingView({
       aria-label={`Reading: ${title}`}
       className={`fixed inset-0 z-50 flex flex-col ${surface} ${textClass}`}
     >
-      <header className={`flex shrink-0 items-center gap-3 border-b px-4 py-3 ${bar}`}>
-        <button
-          type="button"
-          onClick={onClose}
-          className={`rounded-full border px-4 py-1.5 text-sm font-medium ${chip}`}
-        >
-          {closeLabel}
-        </button>
+      <header className={`flex shrink-0 items-center gap-3 border-b px-4 py-2.5 ${bar}`}>
         <p className={`min-w-0 flex-1 truncate text-sm font-medium ${quiet}`}>{title}</p>
         <div
           role="progressbar"
@@ -355,10 +349,21 @@ export function ReadingView({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(progress * 100)}
-          className={`h-1.5 w-20 overflow-hidden rounded-full sm:w-32 ${dark ? 'bg-stone-800' : 'bg-stone-200'}`}
+          className={`h-1.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-32 ${dark ? 'bg-stone-800' : 'bg-stone-200'}`}
         >
           <div className="h-full bg-orange-500" style={{ width: `${progress * 100}%` }} />
         </div>
+        {/* Top right, where a close button is expected. Escape closes too. */}
+        <button
+          type="button"
+          onClick={onClose}
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-2.5 pr-3.5 text-sm font-semibold ${
+            dark ? 'bg-white text-stone-900 hover:bg-stone-200' : 'bg-stone-900 text-white hover:bg-stone-700'
+          }`}
+        >
+          <CloseIcon className="h-4 w-4" />
+          {closeLabel}
+        </button>
       </header>
 
       <div

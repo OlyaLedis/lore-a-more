@@ -1,16 +1,19 @@
 import { useQuery } from 'convex/react'
-import type { Map as LeafletMap } from 'leaflet'
-import { useCallback, useEffect, useState } from 'react'
-import { Circle, useMapEvents } from 'react-leaflet'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import type { LatLngBounds, Map as LeafletMap } from 'leaflet'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Circle, CircleMarker, useMapEvents } from 'react-leaflet'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { PageHeader } from '../components/PageHeader'
 import { MapLocate } from '../components/MapLocate'
-import { MapSearch } from '../components/MapSearch'
+import { MapSearch, type ChosenPlace } from '../components/MapSearch'
+import { PlaceSheet } from '../components/PlaceSheet'
 import { BaseMap, StoryPin } from '../components/StoryMap'
 import { StorySheet } from '../components/StorySheet'
 import { EUROPEAN_LEGENDS } from '../data/europeanLegends'
-import { worldCopies, writeHerePath } from '../location'
+import { worldCopies } from '../location'
+import { placeParts, zoomToPart } from '../placeTrail'
+import { storyZoom } from '../placeZoom'
 import { useMapStatus } from '../mapStatus'
 import { dotColor, MAP_CATEGORIES, MAP_DATA_SOURCE, mapCategory, type MapCategory, type MapStory } from '../mapStories'
 import { storyPath } from '../storyLinks'
@@ -46,6 +49,7 @@ function useLiveStories(): MapStory[] | undefined {
     shortDescription: story.excerpt,
     locationType: story.location.precision ?? 'exact',
     href: storyPath(story),
+    code: story.code,
   }))
 }
 
@@ -61,11 +65,29 @@ export default function MapPage() {
   const visible = stories?.filter((story) => shownCategory === 'all' || story.category === shownCategory)
   const focus = useFocusArea()
   const [map, setMap] = useState<LeafletMap | null>(null)
-  const navigate = useNavigate()
+  const location = useLocation()
+  // Coming back to this page (e.g. the story form's back arrow), the map opens where it was left.
+  const [backView] = useState(() => mapViewOf(location.state))
   // The story shown in the sheet. Hidden by the category filter, it closes.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = visible?.find((story) => story.id === selectedId) ?? null
   const close = useCallback(() => setSelectedId(null), [setSelectedId])
+  // A place chosen in the search: ringed on the map, with its card at the bottom while no story is open.
+  const [place, setPlace] = useState<ChosenPlace | null>(null)
+  const closePlace = useCallback(() => setPlace(null), [setPlace])
+  const bounds = useMapBounds(map)
+  const inView = bounds
+    ? visible?.filter((s) => worldCopies({ lat: s.latitude, lng: s.longitude }).some((c) => bounds.contains(c)))
+    : undefined
+  useRememberView(map)
+  useOpenLinkedStory({ map, stories, skip: backView !== null, onSelect: setSelectedId })
+
+  // "Nearest" on the place card: fly to that story and open it.
+  function openStory(story: MapStory) {
+    if (!map) return
+    map.once('moveend', () => setSelectedId(story.id))
+    map.flyTo([story.latitude, story.longitude], 13, { duration: 1.2 })
+  }
 
   return (
     <div>
@@ -92,9 +114,8 @@ export default function MapPage() {
       <div className="relative">
       <BaseMap
         key={focus ? `${focus.center.lat},${focus.center.lng},${focus.radiusKm}` : 'all'}
-        {...(focus
-          ? { center: focus.center, zoom: zoomForRadius(focus.radiusKm) }
-          : START_VIEW)}
+        {...(backView ??
+          (focus ? { center: focus.center, zoom: zoomForRadius(focus.radiusKm) } : START_VIEW))}
         // The rest of the screen below the header and the filter: on phones down to the bottom edge,
         // under the floating tab bar; on wider screens to just above the bottom of the window.
         className="sp-map-tab h-[calc(100dvh-8.5rem)] min-h-80 md:h-[calc(100dvh-10rem)]"
@@ -110,7 +131,17 @@ export default function MapPage() {
         )}
         <ReportPosition label={focus?.label} />
         <CenterPopups />
-        <CloseOnMapTap onTap={close} />
+        {/* A tap on the map closes the story's card first, then the place's. */}
+        <CloseOnMapTap onTap={() => (selectedId ? close() : closePlace())} />
+        {place && (
+          // Under the story dots (overlay pane), so it never hides them.
+          <CircleMarker
+            center={[place.lat, place.lng]}
+            radius={12}
+            pathOptions={{ color: '#1c1917', weight: 2, opacity: 0.75, fill: false }}
+            interactive={false}
+          />
+        )}
         {visible?.flatMap((story) =>
           worldCopies({ lat: story.latitude, lng: story.longitude }).map((center) => (
             <StoryPin
@@ -125,9 +156,18 @@ export default function MapPage() {
         )}
       </BaseMap>
       {selected && <StorySheet key={selected.id} story={selected} map={map} onClose={close} />}
+      {place && !selected && (
+        <PlaceSheet place={place} inView={inView} all={visible} onOpenStory={openStory} onClose={closePlace} />
+      )}
       {/* Place search and Locate Me as one row along the top of the map. */}
       <div className="absolute inset-x-2 top-2 z-[1000] flex items-center gap-2 md:inset-x-3 md:top-3">
-        <MapSearch map={map} onAddStory={(place) => navigate(writeHerePath(place))} />
+        <MapSearch
+          map={map}
+          onPlace={(chosen) => {
+            setSelectedId(null)
+            setPlace(chosen)
+          }}
+        />
         <MapLocate map={map} />
       </div>
       </div>
@@ -166,6 +206,75 @@ function CategoryTabs({ shown, onShow }: { shown: MapCategory | 'all'; onShow: (
       })}
     </div>
   )
+}
+
+// The map's visible area, updated when it stops moving.
+function useMapBounds(map: LeafletMap | null) {
+  const [bounds, setBounds] = useState<LatLngBounds | null>(null)
+  useEffect(() => {
+    if (!map) return
+    const update = () => setBounds(map.getBounds())
+    update()
+    map.on('moveend', update)
+    return () => {
+      map.off('moveend', update)
+    }
+  }, [map])
+  return bounds
+}
+
+// From a story page's place line: /map?story=SP-…&part=<i> shows part i of the story's place (0: the
+// story's own spot, with its card open; then its town, region, country, as PlaceTrail does on the map).
+// Once per visit; not when coming back to the map, which reopens where it was left.
+function useOpenLinkedStory({
+  map,
+  stories,
+  skip,
+  onSelect,
+}: {
+  map: LeafletMap | null
+  stories: MapStory[] | undefined
+  skip: boolean
+  onSelect: (id: string) => void
+}) {
+  const [params] = useSearchParams()
+  const key = params.get('story')
+  const part = Math.max(0, Math.floor(Number(params.get('part')) || 0))
+  const done = useRef<string | null>(null)
+  useEffect(() => {
+    if (skip || !key || !map || !stories || done.current === `${key}:${part}`) return
+    done.current = `${key}:${part}`
+    const story = stories.find((s) => s.code === key.toUpperCase() || s.id === key)
+    if (!story) return
+    const at = { lat: story.latitude, lng: story.longitude }
+    if (part === 0) {
+      map.setView([at.lat, at.lng], storyZoom(story.locationType), { animate: false })
+      onSelect(story.id)
+      return
+    }
+    // Start from the story's spot, then frame the wider place around it.
+    map.setView([at.lat, at.lng], 10, { animate: false })
+    const parts = placeParts(story.place ?? '')
+    if (parts[part]) void zoomToPart(map, parts, part, at, story.locationType)
+  }, [skip, key, part, map, stories, onSelect])
+}
+
+// Keeps the map's view in this page's history entry (as router state), so coming back to it (the browser's
+// Back, or the story form's back arrow) reopens the map where it was left.
+function useRememberView(map: LeafletMap | null) {
+  useEffect(() => {
+    if (!map) return
+    const save = () => {
+      const c = map.getCenter()
+      const mapView: MapView = { center: [c.lat, c.lng], zoom: map.getZoom() }
+      const state = window.history.state as { usr?: object } | null
+      window.history.replaceState({ ...state, usr: { ...state?.usr, mapView } }, '')
+    }
+    map.on('moveend', save)
+    return () => {
+      map.off('moveend', save)
+    }
+  }, [map])
 }
 
 // Tapping the map itself (not a dot) closes the story's sheet.
@@ -221,3 +330,10 @@ function ReportPosition({ label }: { label?: string }) {
 // Where the map opens with no area chosen: the same view as our Felt map (felt.com, loc=50.424,6.762,
 // 7.38z), from Belgium to Frankfurt and Mannheim, where many of the stories are.
 const START_VIEW = { center: [50.424, 6.762] as [number, number], zoom: 7.4 }
+
+type MapView = { center: [number, number]; zoom: number }
+
+function mapViewOf(state: unknown): MapView | null {
+  const view = (state as { mapView?: MapView } | null)?.mapView
+  return view && Array.isArray(view.center) && Number.isFinite(view.zoom) ? view : null
+}

@@ -35,8 +35,9 @@ export type MapStory = {
   status: MapStoryStatus
   shortDescription: string
   locationType: 'exact' | 'area' | 'uncertain'
-  // Only the app's own stories have a page to open.
+  // Only the app's own stories have a page to open, and a public code (SP-…) to find them by.
   href?: string
+  code?: string
   // The real place the story is anchored to, e.g. "Lorelei rock, Rhine, Germany".
   place?: string
   // Where the story comes from, for the researched legends.

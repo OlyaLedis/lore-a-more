@@ -3,9 +3,10 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { themeLabel } from '../../convex/taxonomy'
 import { googleMapsUrl, precisionNote } from '../location'
-import { MAP_CATEGORIES, type MapStory } from '../mapStories'
+import type { MapStory } from '../mapStories'
 import { CloseIcon } from './Icons'
 import { PlaceTrail } from './PlaceTrail'
+import { TypePhrase } from './StoryType'
 
 // The Map tab's story preview: a compact card layered over the bottom of the map (above the phone's
 // tab bar; bottom left on wider screens), instead of a popup over the story's place. When it opens,
@@ -48,7 +49,6 @@ export function StorySheet({
     return () => cancelAnimationFrame(frame)
   }, [map, story])
 
-  const category = MAP_CATEGORIES.find((c) => c.id === story.category)
   const note = precisionNote(story.locationType)
   return (
     <div
@@ -58,13 +58,9 @@ export function StorySheet({
       className="absolute inset-x-2 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-[1000] rounded-2xl border border-stone-200/80 bg-white/95 px-4 pb-4 pt-3 shadow-lg shadow-stone-900/10 backdrop-blur md:inset-x-auto md:bottom-4 md:left-4 md:w-[22rem]"
     >
       <div className="flex items-start justify-between gap-3">
-        {category ? (
-          <p className="font-serif text-sm italic" style={{ color: category.ink }}>
-            {category.phrase}
-          </p>
-        ) : (
-          <span />
-        )}
+        <p>
+          <TypePhrase category={story.category} />
+        </p>
         <button
           type="button"
           onClick={onClose}
@@ -75,7 +71,17 @@ export function StorySheet({
         </button>
       </div>
 
-      <h2 className="mt-0.5 font-serif text-xl font-semibold leading-snug tracking-tight text-stone-900">{story.title}</h2>
+      {/* The title and the excerpt open the story too, like "Open story" (underlined on hover, where
+          there is hover). The place line, topics, and Google Maps keep their own links. */}
+      <h2 className="mt-0.5 font-serif text-xl font-semibold leading-snug tracking-tight text-stone-900">
+        {story.href ? (
+          <Link to={story.href} className="decoration-stone-400 underline-offset-4 hover:underline">
+            {story.title}
+          </Link>
+        ) : (
+          story.title
+        )}
+      </h2>
 
       {story.place && (
         <p className="mt-1 text-[13px] leading-snug text-stone-600">
@@ -91,11 +97,28 @@ export function StorySheet({
       )}
 
       {story.shortDescription && (
-        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-stone-700">{story.shortDescription}</p>
+        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-stone-700">
+          {story.href ? (
+            <Link to={story.href} tabIndex={-1} className="decoration-stone-400 underline-offset-2 hover:underline">
+              {story.shortDescription}
+            </Link>
+          ) : (
+            story.shortDescription
+          )}
+        </p>
       )}
 
       {story.themes && story.themes.length > 0 && (
-        <p className="mt-2 truncate text-xs text-stone-500">{story.themes.map(themeLabel).join(' · ')}</p>
+        <p className="mt-2 truncate text-xs text-stone-500">
+          {story.themes.map((theme, i) => (
+            <span key={theme}>
+              {i > 0 && ' · '}
+              <Link to={`/search?theme=${theme}`} className="underline-offset-2 hover:text-stone-900 hover:underline">
+                {themeLabel(theme)}
+              </Link>
+            </span>
+          ))}
+        </p>
       )}
 
       <div className="mt-3 flex items-center gap-4">

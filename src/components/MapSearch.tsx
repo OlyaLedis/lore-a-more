@@ -1,5 +1,4 @@
 import type { Map as LeafletMap } from 'leaflet'
-import { popup } from 'leaflet'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { geocodingEnabled, placeCentre, searchPlaces, type PlaceResult } from '../geocoding'
 import { flyToView, placeView } from '../placeZoom'
@@ -11,17 +10,10 @@ const MAX_PLACES = 6
 
 // Place search above the map: a field (map-pin icon, so it reads as a place search rather than a
 // story search) that finds towns, addresses, castles, mountains… (MapTiler) as you type, ranked near
-// the map's centre. Choosing a place zooms to it by its kind (see placeZoom.ts) with a small name card
-// and an "Add a story" button. Arrow keys move through the results, Enter chooses, Escape closes.
+// the map's centre. Choosing a place zooms to it by its kind (see placeZoom.ts) and hands it to the
+// page, which shows it in a card at the bottom of the map (PlaceSheet), clear of the stories there. Arrow keys move through the results, Enter chooses, Escape closes.
 // Stories are found on the Search tab.
-export function MapSearch({
-  map,
-  onAddStory,
-}: {
-  map: LeafletMap | null
-  // "Add a story" on a chosen place's card. The page opens the story form there (or Sign In first).
-  onAddStory?: (place: { label: string; lat: number; lng: number; pointLike: boolean }) => void
-}) {
+export function MapSearch({ map, onPlace }: { map: LeafletMap | null; onPlace?: (place: ChosenPlace) => void }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [debounced, setDebounced] = useState('')
@@ -70,7 +62,7 @@ export function MapSearch({
   function choose(index: number) {
     const place = results[index]
     if (!place || !map) return
-    void goToPlace(map, place, onAddStory)
+    void goToPlace(map, place, onPlace)
     setText(place.name)
     setOpen(false)
     inputRef.current?.blur()
@@ -243,11 +235,10 @@ function Highlight({ text, query }: { text: string; query: string }) {
   )
 }
 
-async function goToPlace(
-  map: LeafletMap,
-  place: PlaceResult,
-  onAddStory?: (place: { label: string; lat: number; lng: number; pointLike: boolean }) => void,
-) {
+// A place chosen in the search, at its centre (see placeCentre).
+export type ChosenPlace = { name: string; context: string; label: string; lat: number; lng: number; pointLike: boolean }
+
+async function goToPlace(map: LeafletMap, place: PlaceResult, onPlace?: (place: ChosenPlace) => void) {
   map.closePopup()
   // A town's centre rather than the middle of its whole area (see placeCentre); a moment at most.
   const controller = new AbortController()
@@ -255,26 +246,5 @@ async function goToPlace(
   const { lat, lng } = await placeCentre(place, controller.signal)
   clearTimeout(timer)
   flyToView(map, placeView(place, { lat, lng }))
-  map.once('moveend', () => {
-    // Built with text nodes, so place names from the search service are never read as HTML.
-    const card = document.createElement('div')
-    const name = card.appendChild(document.createElement('p'))
-    name.className = '!m-0 text-base font-semibold text-stone-900'
-    name.textContent = place.name
-    if (place.context) {
-      const where = card.appendChild(document.createElement('p'))
-      where.className = '!mb-0 !mt-1 text-sm text-stone-500'
-      where.textContent = place.context
-    }
-    if (onAddStory) {
-      // Like Felt's "Add comment": a story about this place, with the place already filled in.
-      const add = card.appendChild(document.createElement('button'))
-      add.type = 'button'
-      add.className =
-        'mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-900 hover:bg-stone-50'
-      add.textContent = '+ Add a story'
-      add.addEventListener('click', () => onAddStory({ label: place.label, lat, lng, pointLike: place.pointLike }))
-    }
-    popup({ className: 'sp-place-card', offset: [0, -4], autoPan: false }).setLatLng([lat, lng]).setContent(card).openOn(map)
-  })
+  onPlace?.({ name: place.name, context: place.context, label: place.label, lat, lng, pointLike: place.pointLike })
 }

@@ -126,16 +126,25 @@ added later as an optional field; there is no audio now.
 buttons sit just below it), and on phones (below `md`) the map's +/– buttons are hidden (`.sp-map-tab`
 in `index.css`; pinch and double-tap still zoom). `MapSearch` is a field with a map-pin icon that finds
 places only (MapTiler geocoding, ranked near the map's centre via `proximity`; stories are found on the
-Search tab), with the matched part in bold. Choosing a place flies to it (see Zoom rules) and points a
-small card at it (name and region), as Felt does. Towns are centred on their Wikidata coordinates
+Search tab), with the matched part in bold. Choosing a place flies to it (see Zoom rules), rings it on the
+map (under the dots), and shows `PlaceSheet` at the bottom where `StorySheet` opens (not a popup over the
+place, which hid its stories): name, region, and light statistics for the stories of the shown type in
+view, live as the map moves ("3 stories on the map here" with a count per type in dot colours, retired
+types as "other"). With none in view it says "No stories here yet" and names the nearest story with its
+distance, which flies there and opens it. There's no Add a story on it (the header has one). A map tap
+closes an open story first, then the place. Towns are centred on their Wikidata coordinates
 (`placeCentre`), because MapTiler gives the middle of the whole area; it falls back to MapTiler's point.
 Arrow keys, Enter, and Escape work. `stories.mapped` returns an `excerpt` (the first 280 characters) for
-the story sheet. `BaseMap`'s `onMap` hands the Leaflet map to the page. The place card has "+ Add a
-story", which opens `/write?place=…&lat=…&lng=…&spot=0|1` (`writeHerePath`, read by `draftFromParams`) so
-the form starts at that place; signed out, `RequireAuth` sends people to Sign In first and back. In the
+the story sheet. `BaseMap`'s `onMap` hands the Leaflet map to the page. `/write?place=…&lat=…&lng=…&spot=0|1` (`draftFromParams`) starts the
+form at that place. The new-story form shows "← Back" when there's a page before it in the tab (it goes
+back in history; sign-in replaces its own entry). The Map tab keeps its view in its history entry
+(`useRememberView`: `mapView` router state, saved on every move), so going back reopens the map where it
+was. In the
 story sheet, each part of the place line is a link (`PlaceTrail`): the first zooms to the story's pin,
 wider parts (town, country) are looked up by name near the pin and framed, falling back to zooming out
-around the pin; clicking one closes the sheet.
+around the pin; clicking one closes the sheet. The story page's place line is the same `PlaceTrail` with `linkTo` (published stories only):
+links to `/map?story=<code>&part=<i>`, which the Map tab handles once (`useOpenLinkedStory`; part 0 opens
+the story's sheet at its spot, wider parts frame the town or country). The shared lookup is `src/placeTrail.ts`.
 
 **Zoom rules.** Whenever the map zooms to a place (map search, the popup place links, the place card),
 `src/placeZoom.ts` picks the zoom by MapTiler's place type (`PlaceResult.types`): countries framed up to
@@ -149,8 +158,11 @@ bar), the phone tab bar is slim and drops its Search circle (the map has its own
 is 56px. No instructions text. The story types are text tabs above the map (`CategoryTabs`: All · True ·
 Legends · Wonder, one at a time, underlined when shown). Tapping a dot opens `StorySheet` (not a popup): a
 compact card at the bottom (above the phone tab bar; bottom left from `md`), with the type as a serif-
-italic phrase in its colour ("A wonder tale", `phrase`/`ink` in `MAP_CATEGORIES`), serif title,
-clickable place line, a three-line excerpt, topics, Open story, and Google Maps. It pans the map so the
+italic phrase in its colour ("A wonder tale", `phrase`/`ink` in `MAP_CATEGORIES`, drawn by `TypePhrase` in `StoryType.tsx`; the story page shows
+the same phrase above its title, linking to Search, and its topics in the same quiet "Giants · Castles" style), serif title,
+clickable place line, a three-line excerpt, topics, Open story, and Google Maps. The title and
+excerpt also open the story and the topics link to Search (underlined on hover only: no cue needed on phones, where
+Open story stays the visible action); the whole card is not one link, since it holds other links. It pans the map so the
 dot sits centred in the uncovered area, enlarges the selected dot (`large`), and closes on ×, Escape, a
 tap on the map, or a place-line click. `/map2` (Felt)
 is no longer linked from the Map tab.

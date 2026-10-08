@@ -97,6 +97,14 @@ export function LocateIcon({ className = 'h-5 w-5' }: IconProps) {
   )
 }
 
+export function ArrowLeftIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M19 12H5M11 6l-6 6 6 6" />
+    </svg>
+  )
+}
+
 export function ArrowRightIcon({ className = 'h-5 w-5' }: IconProps) {
   return (
     <svg {...base} className={className}>
