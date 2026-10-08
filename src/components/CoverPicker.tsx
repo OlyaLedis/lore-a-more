@@ -2,7 +2,7 @@ import { useMutation } from 'convex/react'
 import { useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
-import type { AgeRange, StoryCategory } from '../../convex/taxonomy'
+import type { AgeRange, StoredCategory } from '../../convex/taxonomy'
 import { clamp, COVER_OFFSET, COVER_SCALE, coverFromScene, type CoverDraft } from '../covers'
 import type { DraftScene } from '../scenes'
 import { StoryCardBody, StoryCover, type CardStory } from './StoryCard'
@@ -25,7 +25,7 @@ export function CoverPicker({
   onChange: (cover: CoverDraft) => void
   scenes: DraftScene[]
   // How the story's card will read, for the collection preview.
-  preview: { title: string; category?: StoryCategory; ageRange?: AgeRange; place?: string }
+  preview: { title: string; category?: StoredCategory; ageRange?: AgeRange; place?: string }
   onUploadingChange: (uploading: boolean) => void
 }) {
   const generateUploadUrl = useMutation(api.stories.generateUploadUrl)
@@ -252,8 +252,8 @@ export function CoverPicker({
 }
 
 const exampleCards: CardStory[] = [
-  { _id: 'example-a' as Id<'stories'>, title: 'The Bridge the Giant Built', category: 'local_legend', ageRange: '8+', place: 'Example place' },
-  { _id: 'example-b' as Id<'stories'>, title: 'The Fox and the Lantern', category: 'folktale', ageRange: '6+', place: 'Example place' },
+  { _id: 'example-a' as Id<'stories'>, title: 'The Bridge the Giant Built', category: 'legend', ageRange: '8+', place: 'Example place' },
+  { _id: 'example-b' as Id<'stories'>, title: 'The Fox and the Lantern', category: 'wonder_tale', ageRange: '6+', place: 'Example place' },
 ]
 
 function Option({

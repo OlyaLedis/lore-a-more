@@ -43,8 +43,13 @@ deletes the story and its revision together. Revisions are a separate table so t
 `get`, which return story documents, can never leak unapproved text. Tests in `convex/stories.test.ts`
 cover this lifecycle.
 
-**Discovery and categories.** New stories and edits require `category`, `ageRange`, and `source`, and
-can have up to 3 `themes` (18 topics such as Dragons & serpents, Saints & miracles, How it got its name). All four are listed in `convex/taxonomy.ts`, which the frontend imports too. The first theme list (sea, forest, adventure, mystery, family) is retired: `legacyTheme` keeps it valid on saved stories, where it still shows and filters, but new stories and edits can't choose it, and the edit form asks the author to pick current topics instead of mapping old ones.
+**Discovery and categories.** `category` is the story type, by one question, "Could this really have
+happened?": `true_tale` (it happened: documented events, customs, memories), `legend` (it might have:
+told as true, never proven), `wonder_tale` (it couldn't have: giants, dragons, miracles). The first
+categories (`local_legend`, `place`, `folktale`) are retired: `legacyCategory` keeps them valid on saved
+stories, which show them without a search link and get a neutral map dot, and the edit form asks the
+author to choose again (never mapped by guess). New stories and edits require `category`, `ageRange`, and `source`, and
+can have up to 3 `themes` (19 topics such as Dragons & serpents, Saints & miracles, Funny). All four are listed in `convex/taxonomy.ts`, which the frontend imports too. The first theme list (sea, forest, adventure, mystery, family) is retired: `legacyTheme` keeps it valid on saved stories, where it still shows and filters, but new stories and edits can't choose it, and the edit form asks the author to pick current topics instead of mapping old ones.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
 the edit form asks the author instead. Home has two states. With no place chosen it shows only a centred "Discover Local Stories" heading,
 a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
@@ -98,7 +103,7 @@ added later as an optional field; there is no audio now.
   and 18.2px while their popup is open (`large` keeps a single story's dot at 18.2px). Each dot sits in
   an invisible 24px hit area. There are no pin shapes or icons yet. The category colours live in
   `src/mapStories.ts` (`MAP_CATEGORIES`). The Map tab filters by `status === "published"` first, then by its
-  category filter chips, which are UI state kept separate from the stories. It shows the app's
+  type tabs, which are UI state kept separate from the stories. It shows the app's
   published stories, which include the curated legends (`VITE_MAP_DATA=legends` shows the file
   directly). Card covers without a picture use the same colour as the story's map dot (`coverColor`).
   There is no Personal Stories category.
@@ -117,20 +122,20 @@ added later as an optional field; there is no audio now.
   area is chosen (`/map?lat=…`); the dots appear as the stories load.
 - Pins and other map furniture have no drop shadows.
 
-**Map search.** The Map tab has a Felt-style search (`src/components/MapSearch.tsx`): a button on the
-map opens a panel listing Locations (MapTiler geocoding, ranked near the map's centre via `proximity`)
-and StoryPlace Stories (matched in the browser on title, then place, then description, ignoring accents
-and case, with the matched part in bold). Choosing a place flies to it at zoom 14 and points a small card at it (name and region), as
-Felt does. Towns and other areas are centred on their Wikidata coordinates (`placeCentre`), because
-MapTiler gives the middle of the whole area; it falls back to MapTiler's point; choosing a story flies to its
-dot and opens its popup. Arrow keys, Enter, and Escape work. `stories.mapped` returns an `excerpt` (the
-first 280 characters) for the popup and this search. `BaseMap`'s `onMap` hands the Leaflet map to the page. The place card has "+ Add a story", which
-opens `/write?place=…&lat=…&lng=…&spot=0|1` (`writeHerePath`, read by `draftFromParams`) so the form starts
-at that place; signed out, `RequireAuth` sends people to Sign In first and back. In a story's popup, each
-part of the place line is a link (`PlaceTrail`): the first zooms to the story's pin, wider parts (town,
-country) are looked up by name near the pin and framed, falling back to zooming out around the pin. Clicking one closes the popup. Every popup on the Map tab
-opens centred in the map (`CenterPopups` pans so the popup's middle is at the map's middle; popups use
-`autoPan={false}`).
+**Map search.** A row along the top of the map holds the place search and Locate Me (the zoom
+buttons sit just below it), and on phones (below `md`) the map's +/– buttons are hidden (`.sp-map-tab`
+in `index.css`; pinch and double-tap still zoom). `MapSearch` is a field with a map-pin icon that finds
+places only (MapTiler geocoding, ranked near the map's centre via `proximity`; stories are found on the
+Search tab), with the matched part in bold. Choosing a place flies to it (see Zoom rules) and points a
+small card at it (name and region), as Felt does. Towns are centred on their Wikidata coordinates
+(`placeCentre`), because MapTiler gives the middle of the whole area; it falls back to MapTiler's point.
+Arrow keys, Enter, and Escape work. `stories.mapped` returns an `excerpt` (the first 280 characters) for
+the story sheet. `BaseMap`'s `onMap` hands the Leaflet map to the page. The place card has "+ Add a
+story", which opens `/write?place=…&lat=…&lng=…&spot=0|1` (`writeHerePath`, read by `draftFromParams`) so
+the form starts at that place; signed out, `RequireAuth` sends people to Sign In first and back. In the
+story sheet, each part of the place line is a link (`PlaceTrail`): the first zooms to the story's pin,
+wider parts (town, country) are looked up by name near the pin and framed, falling back to zooming out
+around the pin; clicking one closes the sheet.
 
 **Zoom rules.** Whenever the map zooms to a place (map search, the popup place links, the place card),
 `src/placeZoom.ts` picks the zoom by MapTiler's place type (`PlaceResult.types`): countries framed up to
@@ -138,7 +143,19 @@ zoom 7, regions up to 9, counties and districts up to 11, towns centred at 14 (F
 wider than 0.2° are framed up to 13), neighbourhoods 15, specific places (castles, peaks) 16, streets
 and addresses 17. A story goes to 16 if exact, 14 for an area, 13 if uncertain (`storyZoom`).
 
-**Locate me.** Under the map search button, `MapLocate` (Felt-style arrow) asks for the position only
+**Map tab layout.** The map design itself is settled; refine only the UI around it. On `/map`, `AppShell`
+uses little padding, the map fills the rest of the screen (on phones it runs under the floating tab
+bar), the phone tab bar is slim and drops its Search circle (the map has its own search), and the header
+is 56px. No instructions text. The story types are text tabs above the map (`CategoryTabs`: All · True ·
+Legends · Wonder, one at a time, underlined when shown). Tapping a dot opens `StorySheet` (not a popup): a
+compact card at the bottom (above the phone tab bar; bottom left from `md`), with the type as a serif-
+italic phrase in its colour ("A wonder tale", `phrase`/`ink` in `MAP_CATEGORIES`), serif title,
+clickable place line, a three-line excerpt, topics, Open story, and Google Maps. It pans the map so the
+dot sits centred in the uncovered area, enlarges the selected dot (`large`), and closes on ×, Escape, a
+tap on the map, or a place-line click. `/map2` (Felt)
+is no longer linked from the Map tab.
+
+**Locate me.** Beside the place search, `MapLocate` ("Locate Me", icon only below `sm`) asks for the position only
 when tapped (`useHere().request()`, rounded to about 1 km, never stored), flies there at zoom 13, and
 marks it with a blue dot and a faint 1 km circle. Browsers only allow location on https or localhost.
 

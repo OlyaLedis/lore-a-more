@@ -2,19 +2,51 @@
 // frontend (no server-only imports here).
 import { v, type Infer } from "convex/values";
 
-export const storyCategory = v.union(
-  v.literal("local_legend"),
-  v.literal("place"),
-  v.literal("folktale"),
-);
+// What kind of story it is, by one question: "Could this really have happened?"
+// True Tale: it happened. Legend: it might have. Wonder Tale: it couldn't have.
+export const storyCategory = v.union(v.literal("true_tale"), v.literal("legend"), v.literal("wonder_tale"));
 export type StoryCategory = Infer<typeof storyCategory>;
 
 // `label` names a section of many stories; `one` names the type of a single story, e.g. on a cover tag.
 export const CATEGORIES: { value: StoryCategory; label: string; one: string; hint: string }[] = [
-  { value: "local_legend", label: "Local Legends", one: "Local Legend", hint: "Legends told about a particular place." },
-  { value: "place", label: "Stories of a Place", one: "Story of a Place", hint: "The history and life of a place." },
-  { value: "folktale", label: "Folktales & Myths", one: "Folktale or Myth", hint: "Traditional tales, myths, and fairy tales." },
+  {
+    value: "true_tale",
+    label: "True Tales",
+    one: "True Tale",
+    hint: "It happened: documented events, customs, or your own memories.",
+  },
+  {
+    value: "legend",
+    label: "Legends",
+    one: "Legend",
+    hint: "It might have happened: told as true, but never proven.",
+  },
+  {
+    value: "wonder_tale",
+    label: "Wonder Tales",
+    one: "Wonder Tale",
+    hint: "It couldn't have happened: giants, dragons, fairies, miracles.",
+  },
 ];
+
+// The first categories (Local Legends, Stories of a Place, Folktales & Myths). Stories saved with them
+// keep them and still show them, but new stories and edits can't choose them: the edit form asks the
+// author to choose again. They are never swapped for a guessed replacement.
+export const legacyCategory = v.union(v.literal("local_legend"), v.literal("place"), v.literal("folktale"));
+export type LegacyCategory = Infer<typeof legacyCategory>;
+const LEGACY_CATEGORIES: { value: LegacyCategory; label: string; one: string }[] = [
+  { value: "local_legend", label: "Local Legends", one: "Local Legend" },
+  { value: "place", label: "Stories of a Place", one: "Story of a Place" },
+  { value: "folktale", label: "Folktales & Myths", one: "Folktale or Myth" },
+];
+
+// Any category a saved story can have.
+export const storedCategory = v.union(storyCategory, legacyCategory);
+export type StoredCategory = Infer<typeof storedCategory>;
+
+export function isCurrentCategory(value: StoredCategory | undefined): value is StoryCategory {
+  return CATEGORIES.some((c) => c.value === value);
+}
 
 export const ageRange = v.union(v.literal("6+"), v.literal("8+"), v.literal("10+"));
 export type AgeRange = Infer<typeof ageRange>;
@@ -41,6 +73,7 @@ export const storyTheme = v.union(
   // What happens
   v.literal("treasure"),
   v.literal("tricks"),
+  v.literal("funny"),
   v.literal("love"),
   v.literal("battles"),
   v.literal("name_origin"),
@@ -65,6 +98,7 @@ export const THEMES: { value: StoryTheme; label: string }[] = [
   { value: "devil", label: "The Devil" },
   { value: "treasure", label: "Treasure" },
   { value: "tricks", label: "Clever tricks" },
+  { value: "funny", label: "Funny" },
   { value: "love", label: "Love" },
   { value: "battles", label: "Battles & sieges" },
   { value: "name_origin", label: "How it got its name" },
@@ -122,12 +156,12 @@ export const SOURCE_KINDS: { value: StorySource["kind"]; label: string; hint: st
   { value: "reference", label: "Based on a published source", hint: "A book, archive, website, or recording." },
 ];
 
-export function categoryLabel(value: StoryCategory) {
-  return CATEGORIES.find((c) => c.value === value)?.label ?? value;
+export function categoryLabel(value: StoredCategory) {
+  return [...CATEGORIES, ...LEGACY_CATEGORIES].find((c) => c.value === value)?.label ?? value;
 }
 
-export function categoryOne(value: StoryCategory) {
-  return CATEGORIES.find((c) => c.value === value)?.one ?? value;
+export function categoryOne(value: StoredCategory) {
+  return [...CATEGORIES, ...LEGACY_CATEGORIES].find((c) => c.value === value)?.one ?? value;
 }
 
 export function themeLabel(value: StoredTheme) {

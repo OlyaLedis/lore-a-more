@@ -57,3 +57,14 @@
   box-shadow: none;
   border: 1px solid rgb(28 25 23 / 0.15);
 }
+
+/* The Map tab: the zoom buttons sit below the search row that runs along the top of the map. */
+.sp-map-tab .leaflet-top.leaflet-left {
+  top: 3.25rem;
+}
+/* On phones: no zoom buttons (pinch and double-tap still zoom). */
+@media (max-width: 767px) {
+  .sp-map-tab .leaflet-control-zoom {
+    display: none;
+  }
+}

@@ -1,7 +1,15 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Id } from '../../convex/_generated/dataModel'
-import { categoryLabel, categoryOne, themeLabel, type AgeRange, type StoredTheme, type StoryCategory } from '../../convex/taxonomy'
+import {
+  categoryLabel,
+  categoryOne,
+  isCurrentCategory,
+  themeLabel,
+  type AgeRange,
+  type StoredCategory,
+  type StoredTheme,
+} from '../../convex/taxonomy'
 import { coverColor } from '../mapStories'
 import { PinIcon } from './Icons'
 import { storyPath } from '../storyLinks'
@@ -12,7 +20,7 @@ export type CardStory = {
   code?: string
   title: string
   author?: string
-  category?: StoryCategory
+  category?: StoredCategory
   ageRange?: AgeRange
   themes?: StoredTheme[]
   place?: string
@@ -63,7 +71,7 @@ const cardFocus =
 // Without an illustration, a cover takes its category's map-dot colour (coverColor), fading lighter
 // towards the corner, so a card and its dot on the map match. Stories from before categories get a
 // neutral cover.
-function colorCover(category: StoryCategory | undefined) {
+function colorCover(category: StoredCategory | undefined) {
   const color = coverColor(category)
   return { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 55%, white))` }
 }
@@ -78,7 +86,7 @@ export function StoryCover({
   tag,
   className = '',
 }: {
-  category?: StoryCategory
+  category?: StoredCategory
   cover?: CardCover | null
   // A small story-type label in the corner, used only on the large featured cover.
   tag?: string
@@ -252,11 +260,15 @@ export function StoryTags({ story }: { story: Pick<CardStory, 'category' | 'ageR
   const chip = 'rounded-full border border-stone-300 px-3 py-1 text-sm text-stone-700 hover:border-stone-900'
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {story.category && (
-        <Link to={`/search?category=${story.category}`} className={chip}>
-          {categoryLabel(story.category)}
-        </Link>
-      )}
+      {/* A retired category still shows, but isn't a search link any more. */}
+      {story.category &&
+        (isCurrentCategory(story.category) ? (
+          <Link to={`/search?category=${story.category}`} className={chip}>
+            {categoryLabel(story.category)}
+          </Link>
+        ) : (
+          <span className={chip}>{categoryLabel(story.category)}</span>
+        ))}
       {story.ageRange && (
         <Link to={`/search?age=${encodeURIComponent(story.ageRange)}`} className="rounded-full hover:opacity-90">
           <AgeSymbol age={story.ageRange} />

@@ -14,11 +14,14 @@ export function PlaceTrail({
   at,
   precision,
   map,
+  onZoom,
 }: {
   place: string
   at: { lat: number; lng: number }
   precision?: Precision
   map: LeafletMap | null
+  // Called when a part is clicked, e.g. to close the story's sheet so the place is in view.
+  onZoom?: () => void
 }) {
   const parts = place
     .split(',')
@@ -28,8 +31,9 @@ export function PlaceTrail({
 
   async function zoomTo(i: number) {
     if (!map) return
-    // The popup steps aside so the place it zooms to can be seen.
+    // The popup or sheet steps aside so the place it zooms to can be seen.
     map.closePopup()
+    onZoom?.()
     if (i === 0) {
       map.flyTo([at.lat, at.lng], storyZoom(precision), { duration: 0.8 })
       return
@@ -60,7 +64,7 @@ export function PlaceTrail({
             type="button"
             onClick={() => void zoomTo(i)}
             title={i === 0 ? `Zoom to the story's place` : `Zoom to ${part}`}
-            className={`font-medium text-stone-700 underline decoration-stone-300 underline-offset-2 hover:text-stone-950 hover:decoration-stone-700 ${
+            className={`underline decoration-stone-300 underline-offset-2 hover:text-stone-950 hover:decoration-stone-700 ${
               busy === i ? 'cursor-wait opacity-60' : ''
             }`}
           >

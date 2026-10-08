@@ -1,15 +1,18 @@
 // What the Map tab draws: a simple list of stories as small coloured dots, from real legends
 // (src/data/europeanLegends.ts) or the app's published stories.
-import type { AgeRange, StoredTheme, StoryCategory } from '../convex/taxonomy'
+import type { AgeRange, StoredCategory, StoredTheme } from '../convex/taxonomy'
 
-export type MapCategory = 'local-legend' | 'story-of-place' | 'folktale-myth'
+// From real to magical (see CATEGORIES in convex/taxonomy.ts).
+export type MapCategory = 'true-tale' | 'legend' | 'wonder-tale'
 
 // Colours for the dots, the category filter, and colour card covers, matching the Felt map's point
 // styles. Dots draw them at 90% opacity with a 1px stroke in a darker shade (see .sp-dot).
-export const MAP_CATEGORIES: { id: MapCategory; label: string; color: string }[] = [
-  { id: 'local-legend', label: 'Local Legends', color: '#889ADD' },
-  { id: 'story-of-place', label: 'Stories of a Place', color: '#50957F' },
-  { id: 'folktale-myth', label: 'Folktales & Myths', color: '#EB9360' },
+// `phrase` introduces one story on its card ("A wonder tale"), in `ink`: a darker shade of the dot colour
+// that reads as text.
+export const MAP_CATEGORIES: { id: MapCategory; label: string; color: string; phrase: string; ink: string }[] = [
+  { id: 'true-tale', label: 'True Tales', color: '#50957F', phrase: 'A true tale', ink: '#3A7360' },
+  { id: 'legend', label: 'Legends', color: '#889ADD', phrase: 'A legend', ink: '#5262A6' },
+  { id: 'wonder-tale', label: 'Wonder Tales', color: '#EB9360', phrase: 'A wonder tale', ink: '#A65A2E' },
 ]
 
 export const CATEGORY_COLORS = Object.fromEntries(MAP_CATEGORIES.map((c) => [c.id, c.color])) as Record<MapCategory, string>
@@ -64,14 +67,15 @@ export type StorySourceRecord = {
   confidence: 'high' | 'medium' | 'low'
 }
 
-const FROM_APP: Record<StoryCategory, MapCategory> = {
-  local_legend: 'local-legend',
-  place: 'story-of-place',
-  folktale: 'folktale-myth',
+const FROM_APP: Record<string, MapCategory> = {
+  true_tale: 'true-tale',
+  legend: 'legend',
+  wonder_tale: 'wonder-tale',
 }
 
-export function mapCategory(category: StoryCategory | undefined): MapCategory | null {
-  return category ? FROM_APP[category] : null
+// Stories still on a retired category (or none) get the neutral dot until their author chooses again.
+export function mapCategory(category: StoredCategory | undefined): MapCategory | null {
+  return (category && FROM_APP[category]) || null
 }
 
 export function dotColor(category: MapCategory | null) {
@@ -79,7 +83,7 @@ export function dotColor(category: MapCategory | null) {
 }
 
 // Card covers without a picture use the same colour as the story's map dot.
-export function coverColor(category: StoryCategory | undefined) {
+export function coverColor(category: StoredCategory | undefined) {
   return dotColor(mapCategory(category))
 }
 

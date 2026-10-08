@@ -34,13 +34,17 @@ export function StoryPin({
   color = NEUTRAL_DOT,
   large = false,
   title,
+  onSelect,
   children,
 }: {
   center: LatLng
   color?: string
+  // The selected size: a single story's own map, a pin being placed, or the story shown in the sheet.
   large?: boolean
   // Shown on hover and read by screen readers.
   title?: string
+  // Tapped (the Map tab opens the story's sheet instead of a popup).
+  onSelect?: () => void
   children?: ReactNode
 }) {
   return (
@@ -50,6 +54,7 @@ export function StoryPin({
       title={title}
       alt={title}
       eventHandlers={{
+        click: () => onSelect?.(),
         // The selected size while this story's popup is open.
         popupopen: (e) => e.target.getElement()?.classList.add('is-selected'),
         popupclose: (e) => e.target.getElement()?.classList.remove('is-selected'),

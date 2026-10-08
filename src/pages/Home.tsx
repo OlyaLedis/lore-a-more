@@ -3,7 +3,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { NEARBY_KM } from '../../convex/geo'
-import { CATEGORIES } from '../../convex/taxonomy'
+import { CATEGORIES, isCurrentCategory } from '../../convex/taxonomy'
 import { LocateIcon } from '../components/Icons'
 import { PlaceFinder, type FindTarget } from '../components/PlaceFinder'
 import { CardRow, FeaturedStoryCard, Section, StoryCard } from '../components/StoryCard'
@@ -130,7 +130,8 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
     label,
     stories: rest.filter((s) => s.category === value),
   })).filter((c) => c.stories.length > 0)
-  const uncategorized = rest.filter((s) => !s.category)
+  // Stories with no category yet, or a retired one.
+  const uncategorized = rest.filter((s) => !isCurrentCategory(s.category))
   // Distances only when there's a clear starting point (see distanceFrom).
   const note = (km: number) => distanceFrom(place, km)
 

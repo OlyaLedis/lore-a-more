@@ -1,17 +1,16 @@
 import { useQuery } from 'convex/react'
 import type { Map as LeafletMap } from 'leaflet'
-import { useEffect, useState } from 'react'
-import { Circle, Popup, useMapEvents } from 'react-leaflet'
+import { useCallback, useEffect, useState } from 'react'
+import { Circle, useMapEvents } from 'react-leaflet'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { PageHeader } from '../components/PageHeader'
 import { MapLocate } from '../components/MapLocate'
 import { MapSearch } from '../components/MapSearch'
-import { PlaceTrail } from '../components/PlaceTrail'
 import { BaseMap, StoryPin } from '../components/StoryMap'
+import { StorySheet } from '../components/StorySheet'
 import { EUROPEAN_LEGENDS } from '../data/europeanLegends'
-import { themeLabel } from '../../convex/taxonomy'
-import { googleMapsUrl, precisionNote, worldCopies, writeHerePath } from '../location'
+import { worldCopies, writeHerePath } from '../location'
 import { useMapStatus } from '../mapStatus'
 import { dotColor, MAP_CATEGORIES, MAP_DATA_SOURCE, mapCategory, type MapCategory, type MapStory } from '../mapStories'
 import { storyPath } from '../storyLinks'
@@ -57,31 +56,24 @@ export default function MapPage() {
   const all = MAP_DATA_SOURCE === 'legends' ? EUROPEAN_LEGENDS : live
   // Only published stories go on the map. Category visibility is separate UI state.
   const stories = all?.filter((story) => story.status === 'published')
-  const [hiddenCategories, setHiddenCategories] = useState<Set<MapCategory>>(new Set())
-  const visible = stories?.filter((story) => !story.category || !hiddenCategories.has(story.category))
+  // The type tab: all stories, or one type at a time. UI state, separate from the stories.
+  const [shownCategory, setShownCategory] = useState<MapCategory | 'all'>('all')
+  const visible = stories?.filter((story) => shownCategory === 'all' || story.category === shownCategory)
   const focus = useFocusArea()
   const [map, setMap] = useState<LeafletMap | null>(null)
   const navigate = useNavigate()
+  // The story shown in the sheet. Hidden by the category filter, it closes.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = visible?.find((story) => story.id === selectedId) ?? null
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
 
   return (
     <div>
+      {/* No instructions: only a note when there's nothing to show yet. */}
       <PageHeader
         title="Map"
         hideTitle
-        subtitle={
-          stories === undefined
-            ? 'Loading stories…'
-            : stories.length === 0
-              ? 'No published stories are connected to a place yet.'
-              : (
-                  <>
-                    Drag and zoom to explore. Tap a dot to see its story.{' '}
-                    <Link to="/map2" className="font-medium text-stone-700 underline-offset-2 hover:underline">
-                      Compare with the Felt map
-                    </Link>
-                  </>
-                )
-        }
+        subtitle={stories?.length === 0 ? 'No published stories are connected to a place yet.' : undefined}
       />
       {focus && (
         <p className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-orange-50 px-4 py-2.5 text-sm text-stone-800 ring-1 ring-orange-200">
@@ -93,17 +85,7 @@ export default function MapPage() {
           </Link>
         </p>
       )}
-      <CategoryFilter
-        hidden={hiddenCategories}
-        onToggle={(category) =>
-          setHiddenCategories((prev) => {
-            const next = new Set(prev)
-            if (next.has(category)) next.delete(category)
-            else next.add(category)
-            return next
-          })
-        }
-      />
+      <CategoryTabs shown={shownCategory} onShow={setShownCategory} />
       {/* Tall enough to explore on a phone while leaving room for the heading and the tab bar.
           Keyed on the focus so switching between an area and all stories re-frames the map. With no
           area chosen it opens on START_VIEW straight away; the dots appear as the stories load. */}
@@ -113,7 +95,9 @@ export default function MapPage() {
         {...(focus
           ? { center: focus.center, zoom: zoomForRadius(focus.radiusKm) }
           : START_VIEW)}
-        className="h-[calc(100dvh-15rem)] min-h-80 md:h-[36rem]"
+        // The rest of the screen below the header and the filter: on phones down to the bottom edge,
+        // under the floating tab bar; on wider screens to just above the bottom of the window.
+        className="sp-map-tab h-[calc(100dvh-8.5rem)] min-h-80 md:h-[calc(100dvh-10rem)]"
         onMap={setMap}
       >
         {focus && (
@@ -126,6 +110,7 @@ export default function MapPage() {
         )}
         <ReportPosition label={focus?.label} />
         <CenterPopups />
+        <CloseOnMapTap onTap={close} />
         {visible?.flatMap((story) =>
           worldCopies({ lat: story.latitude, lng: story.longitude }).map((center) => (
             <StoryPin
@@ -133,110 +118,60 @@ export default function MapPage() {
               center={center}
               color={dotColor(story.category)}
               title={story.title}
-            >
-              <Popup autoPan={false}>
-                <p className="!m-0 font-serif text-base font-semibold leading-snug">{story.title}</p>
-                {story.category && (
-                  <p className="!mb-0 !mt-1 flex items-center gap-1.5 text-xs text-stone-500">
-                    <span
-                      aria-hidden
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: dotColor(story.category) }}
-                    />
-                    {MAP_CATEGORIES.find((c) => c.id === story.category)?.label}
-                  </p>
-                )}
-                {story.place && (
-                  <p className="!mb-0 !mt-1 text-xs">
-                    <PlaceTrail
-                      place={story.place}
-                      at={{ lat: story.latitude, lng: story.longitude }}
-                      precision={story.locationType}
-                      map={map}
-                    />
-                  </p>
-                )}
-                <p className="!mb-0 !mt-1 text-stone-600">{story.shortDescription}</p>
-                {story.themes && story.themes.length > 0 && (
-                  <p className="!mb-0 !mt-1 text-xs text-stone-500">{story.themes.map(themeLabel).join(' · ')}</p>
-                )}
-                <p className="!m-0 text-xs text-stone-500">
-                  {precisionNote(story.locationType) && `${precisionNote(story.locationType)} · `}
-                  <a
-                    href={googleMapsUrl({ lat: story.latitude, lng: story.longitude })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold !text-orange-700 underline-offset-2 hover:underline"
-                  >
-                    Google Maps ↗
-                  </a>
-                </p>
-                {story.href ? (
-                  <Link
-                    to={story.href}
-                    className="mt-2 inline-block rounded-full bg-orange-600 px-3.5 py-1.5 text-sm font-semibold !text-white no-underline hover:bg-orange-700"
-                  >
-                    Open story
-                  </Link>
-                ) : story.source ? (
-                  <p className="!mb-0 !mt-2 text-xs text-stone-500">
-                    Source:{' '}
-                    <a
-                      href={story.source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold !text-orange-700 underline-offset-2 hover:underline"
-                    >
-                      {story.source.author ? `${story.source.author.split(' (')[0].split(',')[0]}, ` : ''}
-                      {story.source.title}
-                      {story.source.date ? ` (${story.source.date.split(' (')[0]})` : ''} ↗
-                    </a>
-                  </p>
-                ) : null}
-              </Popup>
-            </StoryPin>
+              large={story.id === selectedId}
+              onSelect={() => setSelectedId(story.id)}
+            />
           )),
         )}
       </BaseMap>
-      <MapLocate map={map} />
-      {stories && (
-        // Signed out, /write sends people to Sign In first and then back to the form with the place.
-        <MapSearch map={map} stories={stories} onAddStory={(place) => navigate(writeHerePath(place))} />
-      )}
+      {selected && <StorySheet key={selected.id} story={selected} map={map} onClose={close} />}
+      {/* Place search and Locate Me as one row along the top of the map. */}
+      <div className="absolute inset-x-2 top-2 z-[1000] flex items-center gap-2 md:inset-x-3 md:top-3">
+        <MapSearch map={map} onAddStory={(place) => navigate(writeHerePath(place))} />
+        <MapLocate map={map} />
+      </div>
       </div>
     </div>
   )
 }
 
-// A lightweight control above the map: one chip per category, with the same pastel dot as on the map.
-// All on by default; tapping one hides or shows its stories.
-function CategoryFilter({ hidden, onToggle }: { hidden: Set<MapCategory>; onToggle: (category: MapCategory) => void }) {
+// Text tabs above the map: All, or one story type at a time (True, Legends, Wonder), with an underline
+// under the one shown. Short names so all four fit one row on a phone.
+const TAB_NAMES: Record<MapCategory, string> = { 'true-tale': 'True', legend: 'Legends', 'wonder-tale': 'Wonder' }
+
+function CategoryTabs({ shown, onShow }: { shown: MapCategory | 'all'; onShow: (category: MapCategory | 'all') => void }) {
+  const tabs: { id: MapCategory | 'all'; label: string; full: string }[] = [
+    { id: 'all', label: 'All', full: 'All stories' },
+    ...MAP_CATEGORIES.map(({ id, label }) => ({ id, label: TAB_NAMES[id], full: label })),
+  ]
   return (
-    <div role="group" aria-label="Show story types" className="scrollbar-none mb-3 flex gap-2 overflow-x-auto pb-1">
-      {MAP_CATEGORIES.map(({ id, label, color }) => {
-        const shown = !hidden.has(id)
+    <div role="tablist" aria-label="Story types" className="scrollbar-none mb-2 flex gap-5 overflow-x-auto border-b border-stone-200 px-0.5">
+      {tabs.map(({ id, label, full }) => {
+        const active = shown === id
         return (
           <button
             key={id}
             type="button"
-            aria-pressed={shown}
-            onClick={() => onToggle(id)}
-            className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
-              shown ? 'border-stone-300 bg-white text-stone-800 hover:border-stone-500' : 'border-stone-200 bg-transparent text-stone-400'
+            role="tab"
+            aria-selected={active}
+            aria-label={full}
+            onClick={() => onShow(id)}
+            className={`-mb-px shrink-0 border-b-2 pb-2 pt-1 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
+              active ? 'border-stone-900 font-semibold text-stone-900' : 'border-transparent font-medium text-stone-500 hover:text-stone-900'
             }`}
           >
-            <span
-              aria-hidden
-              className="h-2.5 w-2.5 rounded-full"
-              // Off: a pale grey dot, so it reads as switched off.
-              style={{ background: shown ? color : 'rgb(214 211 209)' }}
-            />
             {label}
           </button>
         )
       })}
     </div>
   )
+}
+
+// Tapping the map itself (not a dot) closes the story's sheet.
+function CloseOnMapTap({ onTap }: { onTap: () => void }) {
+  useMapEvents({ click: onTap })
+  return null
 }
 
 // Every popup opens in the middle of the map: the map moves so the whole popup (and the dot it points

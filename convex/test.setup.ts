@@ -52,7 +52,7 @@ export const baseStory: {
   title: "The mill",
   scenes: oneScene("Once upon a time."),
   cover: { kind: "colors" },
-  category: "folktale",
+  category: "wonder_tale",
   ageRange: "6+",
   themes: [],
   source: { kind: "retelling" },

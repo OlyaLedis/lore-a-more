@@ -23,13 +23,17 @@ function useOpeningScreen() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const opening = useOpeningScreen()
+  // The Map tab gives the map as much of the screen as it can: little padding, and on phones the map
+  // runs under the floating tab bar instead of stopping above it.
+  const onMap = useLocation().pathname === '/map'
+  const padding = onMap ? 'pt-3 pb-0 md:pb-4 md:pt-4' : `pt-6 md:pb-16 md:pt-10 ${opening ? 'pb-8' : 'pb-32'}`
   return (
     <MapStatusProvider>
     <div className="min-h-screen bg-stone-50 text-stone-900">
       <TopBar opening={opening} />
       {/* Bottom padding keeps content clear of the floating tab bar on phones. */}
-      <main className={`mx-auto max-w-5xl px-4 pt-6 sm:px-6 md:pb-16 md:pt-10 ${opening ? 'pb-8' : 'pb-32'}`}>{children}</main>
-      {!opening && <BottomBar />}
+      <main className={`mx-auto max-w-5xl px-4 sm:px-6 ${padding}`}>{children}</main>
+      {!opening && <BottomBar onMap={onMap} />}
     </div>
     </MapStatusProvider>
   )
@@ -44,7 +48,7 @@ function TopBar({ opening }: { opening: boolean }) {
     <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-stone-50/85 backdrop-blur">
       {/* Coordinates of whatever place is on screen; empty (hidden) on pages without one. */}
       <MapStatusBar />
-      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="font-serif text-xl font-semibold tracking-tight sm:text-2xl">
           Story<span className="text-orange-600">Place</span>
         </Link>
@@ -121,40 +125,43 @@ function TopBar({ opening }: { opening: boolean }) {
   )
 }
 
-// Phone navigation: Home, Map, and Library in one bar, and Search in its own circle beside it.
-function BottomBar() {
-  const surface = 'border border-stone-200/80 bg-white/90 shadow-lg shadow-stone-900/10 backdrop-blur'
+// Phone navigation: Home, Map, and Library in one slim bar, and Search in its own circle beside it.
+// On the Map tab the circle is left out: the map has its own search.
+function BottomBar({ onMap }: { onMap: boolean }) {
+  const surface = 'border border-stone-200/80 bg-white/90 shadow-md shadow-stone-900/5 backdrop-blur'
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
-      <div className="mx-auto flex max-w-md items-center gap-3">
-        <nav aria-label="Main" className={`grid flex-1 grid-cols-3 rounded-full p-1.5 ${surface}`}>
+    <div className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+      <div className={`mx-auto flex items-center gap-2 ${onMap ? 'max-w-[17rem]' : 'max-w-sm'}`}>
+        <nav aria-label="Main" className={`grid flex-1 grid-cols-3 rounded-full p-1 ${surface}`}>
           {tabs.map(({ to, label, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 rounded-full py-1.5 text-[11px] font-medium transition ${
+                `flex flex-col items-center gap-px rounded-full py-1 text-[10px] font-medium transition ${
                   isActive ? 'bg-orange-50 text-orange-700' : 'text-stone-500 hover:text-stone-900'
                 }`
               }
             >
-              <Icon className="h-6 w-6" />
+              <Icon className="h-5 w-5" />
               {label}
             </NavLink>
           ))}
         </nav>
+        {!onMap && (
         <NavLink
           to="/search"
           aria-label="Search"
           className={({ isActive }) =>
-            `flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full ${surface} ${
+            `flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${surface} ${
               isActive ? 'text-orange-700 ring-2 ring-orange-600' : 'text-stone-600'
             }`
           }
         >
-          <SearchIcon className="h-6 w-6" />
+          <SearchIcon className="h-5 w-5" />
         </NavLink>
+        )}
       </div>
     </div>
   )

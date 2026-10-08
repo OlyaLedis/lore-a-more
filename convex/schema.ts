@@ -1,7 +1,7 @@
 import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { ageRange, storedTheme, storyCategory, storySource } from "./taxonomy";
+import { ageRange, storedCategory, storedTheme, storySource } from "./taxonomy";
 
 export const storyStatus = v.union(
   v.literal("pending"),
@@ -12,7 +12,8 @@ export const storyStatus = v.union(
 // Category, age, themes, and source. Required for new submissions and edits, but optional here because
 // stories written before they existed have none; those are never given made-up values.
 export const storyMetadata = {
-  category: v.optional(storyCategory),
+  // Includes retired categories, which older stories may still have (see legacyCategory).
+  category: v.optional(storedCategory),
   ageRange: v.optional(ageRange),
   // Includes retired themes, which older stories may still have (see legacyTheme).
   themes: v.optional(v.array(storedTheme)),

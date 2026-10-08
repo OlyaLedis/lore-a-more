@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useHere } from '../here'
 import { NavigateIcon } from './Icons'
 
-// Felt-style "locate me" button under the map search. Asks for the reader's location only when tapped
+// "Locate Me" beside the place search above the map. Asks for the reader's location only when tapped
 // (see HereProvider: rounded to about 1 km, never stored), then flies there and marks it with a blue
 // dot and a faint circle about 1 km across, since the position is only that precise.
 const ZOOM = 13
@@ -47,25 +47,27 @@ export function MapLocate({ map }: { map: LeafletMap | null }) {
 
   const locating = here.status === 'locating'
   return (
-    <>
+    <div className="relative shrink-0">
       <button
         type="button"
         onClick={() => void locate()}
         disabled={locating}
-        aria-label="Show my location"
-        title="Show my location"
-        className="absolute right-3 top-16 z-[999] flex h-11 w-11 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-900 hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
+        aria-label="Locate Me"
+        title="Locate Me"
+        className="flex h-10 items-center gap-1.5 rounded-xl border border-stone-200 bg-white/95 px-2.5 shadow-sm shadow-stone-900/5 backdrop-blur text-sm font-medium text-stone-800 hover:border-stone-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70 sm:px-3"
       >
-        <NavigateIcon className={`h-5 w-5 ${locating ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
+        <NavigateIcon className={`h-4 w-4 ${locating ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
+        {/* Icon only on narrow phones; the label is always there for screen readers. */}
+        <span className="hidden sm:inline">Locate Me</span>
       </button>
       {message && (
         <p
           role="alert"
-          className="absolute right-16 top-16 z-[999] max-w-60 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700"
+          className="absolute right-0 top-full z-[1100] mt-1 w-60 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 shadow-md shadow-stone-900/5"
         >
           {message}
         </p>
       )}
-    </>
+    </div>
   )
 }

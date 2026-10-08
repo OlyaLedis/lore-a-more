@@ -15,16 +15,16 @@ describe("search and filters", () => {
     const users = await setupUsers();
     const castle = await publish(users, {
       title: "The giant of the castle",
-      category: "local_legend",
+      category: "legend",
       themes: ["castles", "giants"],
       location: lisbon,
     });
-    await publish(users, { title: "Grandma's kitchen", category: "folktale", themes: ["love"] });
+    await publish(users, { title: "Grandma's kitchen", category: "wonder_tale", themes: ["love"] });
     // Pending stories never show up.
     await users.author.mutation(api.stories.submit, {
       title: "Castle draft",
       scenes: oneScene("…"),
-      category: "local_legend",
+      category: "legend",
       ageRange: "6+",
       themes: ["castles"],
       source: { kind: "personal" },
@@ -37,19 +37,19 @@ describe("search and filters", () => {
     expect(await ids({ text: "Lisbon" })).toEqual([castle]);
     expect(await ids({ text: "legends" })).toEqual([castle]);
     expect(await ids({ text: "giants" })).toEqual([castle]);
-    expect(await ids({ text: "castle", category: "folktale" })).toEqual([]);
+    expect(await ids({ text: "castle", category: "wonder_tale" })).toEqual([]);
   });
 
   test("filters by category, theme, and age suitability", async () => {
     const users = await setupUsers();
-    const young = await publish(users, { title: "A", category: "folktale", ageRange: "6+", themes: ["water"] });
-    const middle = await publish(users, { title: "B", category: "folktale", ageRange: "8+", themes: ["mountains"] });
-    const older = await publish(users, { title: "C", category: "place", ageRange: "10+", themes: ["water"] });
+    const young = await publish(users, { title: "A", category: "wonder_tale", ageRange: "6+", themes: ["water"] });
+    const middle = await publish(users, { title: "B", category: "wonder_tale", ageRange: "8+", themes: ["mountains"] });
+    const older = await publish(users, { title: "C", category: "true_tale", ageRange: "10+", themes: ["water"] });
 
     const ids = async (args: Record<string, string>) =>
       new Set((await users.t.query(api.discover.search, args)).map((s) => s._id));
     expect(await ids({})).toEqual(new Set([young, middle, older]));
-    expect(await ids({ category: "folktale" })).toEqual(new Set([young, middle]));
+    expect(await ids({ category: "wonder_tale" })).toEqual(new Set([young, middle]));
     expect(await ids({ theme: "water" })).toEqual(new Set([young, older]));
     // "For ages 8+" means suitable for an 8-year-old: 6+ and 8+, not 10+.
     expect(await ids({ ageRange: "8+" })).toEqual(new Set([young, middle]));
@@ -70,6 +70,19 @@ describe("search and filters", () => {
     ).rejects.toThrow();
   });
 
+  test("retired categories stay on older stories, but new stories can't choose them", async () => {
+    const users = await setupUsers();
+    const old = await publish(users, { title: "The old mill" });
+    // Saved before the categories changed.
+    await users.t.run((ctx) => ctx.db.patch("stories", old, { category: "local_legend" }));
+    expect((await users.t.query(api.stories.get, { id: old }))?.category).toBe("local_legend");
+    expect(await users.t.query(api.discover.search, { category: "legend" })).toEqual([]);
+
+    await expect(
+      users.author.mutation(api.stories.submit, { ...baseStory, category: "local_legend" as never }),
+    ).rejects.toThrow();
+  });
+
   test("old stories without a category or age still appear, but not under category or age filters", async () => {
     const users = await setupUsers();
     // A story written before categories existed: no category, age, themes, or source.
@@ -83,7 +96,7 @@ describe("search and filters", () => {
       }),
     );
     expect((await users.t.query(api.discover.search, {})).map((s) => s._id)).toEqual([legacy]);
-    expect(await users.t.query(api.discover.search, { category: "folktale" })).toEqual([]);
+    expect(await users.t.query(api.discover.search, { category: "wonder_tale" })).toEqual([]);
     expect(await users.t.query(api.discover.search, { ageRange: "10+" })).toEqual([]);
     expect((await users.t.query(api.discover.home, {})).categories).toEqual([]);
   });
@@ -92,11 +105,11 @@ describe("search and filters", () => {
 describe("home sections", () => {
   test("category shelves hold only published stories of that category, and empty ones are left out", async () => {
     const users = await setupUsers();
-    const legend = await publish(users, { category: "local_legend" });
+    const legend = await publish(users, { category: "legend" });
     await users.author.mutation(api.stories.submit, {
       title: "Pending",
       scenes: oneScene("…"),
-      category: "folktale",
+      category: "wonder_tale",
       ageRange: "6+",
       themes: [],
       source: { kind: "personal" },
@@ -104,7 +117,7 @@ describe("home sections", () => {
     });
 
     const { categories, seasonal } = await users.t.query(api.discover.home, {});
-    expect(categories.map((c) => c.category)).toEqual(["local_legend"]);
+    expect(categories.map((c) => c.category)).toEqual(["legend"]);
     expect(categories[0].stories.map((s) => s._id)).toEqual([legend]);
     expect(seasonal).toEqual([]);
   });
@@ -152,11 +165,11 @@ describe("Top Picks", () => {
 
   test("recommends nearby stories and stories sharing themes the reader explored, with reasons", async () => {
     const users = await setupUsers();
-    const opened = await publish(users, { title: "Opened", themes: ["water"], category: "place" });
-    const sameTheme = await publish(users, { title: "Sea", themes: ["water"], category: "folktale" });
-    const sameCategory = await publish(users, { title: "Place", themes: [], category: "place" });
-    const nearby = await publish(users, { title: "Near", location: lisbon, category: "folktale" });
-    await publish(users, { title: "Unrelated", themes: ["giants"], category: "folktale" });
+    const opened = await publish(users, { title: "Opened", themes: ["water"], category: "true_tale" });
+    const sameTheme = await publish(users, { title: "Sea", themes: ["water"], category: "wonder_tale" });
+    const sameCategory = await publish(users, { title: "Place", themes: [], category: "true_tale" });
+    const nearby = await publish(users, { title: "Near", location: lisbon, category: "wonder_tale" });
+    await publish(users, { title: "Unrelated", themes: ["giants"], category: "wonder_tale" });
 
     await users.reader.mutation(api.library.recordView, { storyId: opened });
 
@@ -164,7 +177,7 @@ describe("Top Picks", () => {
     expect(Object.fromEntries(picks.map((p) => [p._id, p.reason]))).toEqual({
       [nearby]: "Near you",
       [sameTheme]: "Because you explored Water",
-      [sameCategory]: "More Stories of a Place",
+      [sameCategory]: "More True Tales",
     });
     // Already opened stories aren't recommended again.
     expect(picks.map((p) => p._id)).not.toContain(opened);
@@ -228,12 +241,12 @@ describe("stories for a selected place", () => {
   test("can return more than a shelf, and only one category", async () => {
     const users = await setupUsers();
     const legends = [];
-    for (let i = 0; i < 14; i++) legends.push(await publish(users, { category: "local_legend", location: lisbon }));
-    const folktale = await publish(users, { category: "folktale", location: lisbon });
+    for (let i = 0; i < 14; i++) legends.push(await publish(users, { category: "legend", location: lisbon }));
+    const folktale = await publish(users, { category: "wonder_tale", location: lisbon });
 
     expect(await users.t.query(api.discover.nearby, { here: inLisbon })).toHaveLength(12);
     expect(await users.t.query(api.discover.nearby, { here: inLisbon, limit: 100 })).toHaveLength(15);
-    const onlyFolktales = await users.t.query(api.discover.nearby, { here: inLisbon, limit: 100, category: "folktale" });
+    const onlyFolktales = await users.t.query(api.discover.nearby, { here: inLisbon, limit: 100, category: "wonder_tale" });
     expect(onlyFolktales.map((s) => s._id)).toEqual([folktale]);
     expect(await users.t.query(api.discover.nearby, { here: inLisbon, limit: 1000 })).toHaveLength(15);
   });

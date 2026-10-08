@@ -6,7 +6,7 @@
 import { spawnSync } from 'node:child_process'
 import { EUROPEAN_LEGENDS } from '../src/data/europeanLegends.ts'
 
-const CATEGORY = { 'local-legend': 'local_legend', 'story-of-place': 'place', 'folktale-myth': 'folktale' } as const
+const CATEGORY = { 'true-tale': 'true_tale', legend: 'legend', 'wonder-tale': 'wonder_tale' } as const
 const RETIRED = new Set(['sea', 'forest', 'adventure', 'mystery', 'family'])
 
 const legends = EUROPEAN_LEGENDS.filter((l) => l.status === 'published').map((l) => {

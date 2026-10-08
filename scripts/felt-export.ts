@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { categoryLabel, themeLabel, type StoredTheme, type StoryCategory } from '../convex/taxonomy.ts'
+import { categoryLabel, themeLabel, type StoredCategory, type StoredTheme } from '../convex/taxonomy.ts'
 import { coverColor } from '../src/mapStories.ts'
 import { storyPath } from '../src/storyLinks.ts'
 
@@ -19,7 +19,7 @@ type Exported = {
   code?: string
   title: string
   body: string
-  category?: StoryCategory
+  category?: StoredCategory
   ageRange?: string
   themes: StoredTheme[]
   location: { lat: number; lng: number; place?: string; precision?: string }

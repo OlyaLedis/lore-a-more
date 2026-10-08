@@ -6,6 +6,7 @@ import { api } from '../../convex/_generated/api'
 import {
   AGE_RANGES,
   CATEGORIES,
+  isCurrentCategory,
   isCurrentTheme,
   MAX_THEMES,
   SOURCE_KINDS,
@@ -96,7 +97,9 @@ export function EditStory() {
 
   const published = story.status === 'approved'
   // Stories written before categories existed have none; the author picks them, we never guess.
-  const missingDetails = !story.category || !story.ageRange || !story.source
+  // A retired category (Local Legends…) counts as missing: the author chooses one of the new ones.
+  const retiredCategory = Boolean(story.category) && !isCurrentCategory(story.category)
+  const missingDetails = !isCurrentCategory(story.category) || !story.ageRange || !story.source
   // Retired themes aren't offered any more, so the author picks current ones instead.
   const themes = (story.themes ?? []).filter(isCurrentTheme)
   const retiredThemes = themes.length < (story.themes ?? []).length
@@ -116,7 +119,9 @@ export function EditStory() {
           : story.revisionStatus === 'rejected'
             ? 'Your last changes were not approved. You can revise them and submit again.'
             : missingDetails
-              ? 'This story was written before categories, ages, and sources were added. Please choose them below.'
+              ? retiredCategory
+                ? 'The story types have changed. Please choose whether this is a True Tale, a Legend, or a Wonder Tale below.'
+                : 'This story was written before categories, ages, and sources were added. Please choose them below.'
               : retiredThemes
                 ? 'The list of themes has changed. Please choose your story’s themes again below.'
                 : undefined
@@ -130,7 +135,7 @@ export function EditStory() {
         // Starts as whatever the story's card shows now.
         cover: initialCover(story.cover, draftsFromScenes(story.scenes)),
         location: story.location ? draftFromSaved(story.location) : null,
-        category: story.category,
+        category: isCurrentCategory(story.category) ? story.category : undefined,
         ageRange: story.ageRange,
         themes,
         source: story.source,
@@ -263,15 +268,15 @@ function StoryForm({
         />
       )}
 
-      <ChoiceGroup legend="Category">
-        <div className="grid gap-2 sm:grid-cols-2">
+      <ChoiceGroup legend="Could this really have happened?" hint="Tales full of magic are just as welcome as true ones.">
+        <div className="grid gap-2 sm:grid-cols-3">
           {CATEGORIES.map((c) => (
             <OptionCard
               key={c.value}
               name="category"
               checked={category === c.value}
               onChange={() => setCategory(c.value)}
-              label={c.label}
+              label={c.one}
               hint={c.hint}
               required
             />

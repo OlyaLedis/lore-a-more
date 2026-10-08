@@ -43,7 +43,7 @@ describe("Recently Played", () => {
     const draft = await users.author.mutation(api.stories.submit, {
       title: "Draft",
       scenes: oneScene("…"),
-      category: "folktale",
+      category: "wonder_tale",
       ageRange: "6+",
       themes: [],
       source: { kind: "personal" },

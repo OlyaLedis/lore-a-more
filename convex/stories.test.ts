@@ -7,7 +7,7 @@ const story = {
   title: "The mill",
   scenes: oneScene("Once upon a time."),
   cover: { kind: "colors" as const },
-  category: "folktale" as const,
+  category: "wonder_tale" as const,
   ageRange: "6+" as const,
   themes: [],
   source: { kind: "retelling" as const },
