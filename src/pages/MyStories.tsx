@@ -17,7 +17,7 @@ export default function MyStories() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl font-bold">My stories</h1>
+      <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">My stories</h1>
       {submitted && (
         <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-amber-900">
           {edited

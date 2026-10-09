@@ -7,11 +7,13 @@
 // Importing again updates the same stories (matched by `importId`), keeping their codes, so links
 // already shared keep working. The text and source are run through the same checks as a story an
 // author writes.
-import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import { ConvexError, v, type Infer } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { cleanStoryInput, storyInputObject } from "./stories";
 import { newStoryCode } from "./storyCodes";
+import { cleanCover, filesOf } from "./covers";
+import { cleanScenes, deleteUnusedFiles, scenesOf, storageIdsOf } from "./scenes";
 
 // The byline on imported legends: the short retellings are ours; the source note names the original.
 const BYLINE = "StoryPlace";
@@ -39,17 +41,22 @@ export const importLegends = internalMutation({
     let added = 0;
     let updated = 0;
     for (const { importId, story } of legends) {
-      const content = await cleanStoryInput(
-        ctx,
-        { ...story, author: BYLINE },
-        { userId: authorId, storyFiles: new Set() },
-      );
       const existing = await ctx.db
         .query("stories")
         .withIndex("by_importId", (q) => q.eq("importId", importId))
         .unique();
+      // The legends file has no pictures. Pictures added later (setPicture) stay with their scene, and the
+      // cover stays while its picture does, so importing again never wipes them.
+      const before = filesOf(existing);
+      const kept = existing ? keepPictures(story, existing) : story;
+      const content = await cleanStoryInput(
+        ctx,
+        { ...kept, author: BYLINE },
+        { userId: authorId, storyFiles: before },
+      );
       if (existing) {
         await ctx.db.patch("stories", existing._id, content);
+        await deleteUnusedFiles(ctx, before, filesOf(content));
         updated++;
       } else {
         await ctx.db.insert("stories", {
@@ -64,6 +71,55 @@ export const importLegends = internalMutation({
       }
     }
     return { added, updated };
+  },
+});
+
+function keepPictures(story: Infer<typeof storyInputObject>, existing: Doc<"stories">) {
+  const old = new Map(scenesOf(existing).map((scene) => [scene.id, scene.illustrations]));
+  const scenes = story.scenes.map((scene) =>
+    scene.illustrations.length === 0 && old.has(scene.id) ? { ...scene, illustrations: old.get(scene.id)! } : scene,
+  );
+  const cover =
+    story.cover.kind === "colors" && existing.cover?.kind === "image" && storageIdsOf(scenes).has(existing.cover.storageId)
+      ? existing.cover
+      : story.cover;
+  return { ...story, scenes, cover };
+}
+
+// Pictures for legends: upload a file to the URL from pictureUploadUrl, then setPicture makes it the
+// legend's cover and the illustration after its last scene (replacing an earlier one).
+//   scripts/legend-pictures.ts does both.
+export const pictureUploadUrl = internalMutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => await ctx.storage.generateUploadUrl(),
+});
+
+export const setPicture = internalMutation({
+  args: { importId: v.string(), storageId: v.id("_storage"), alt: v.string(), credit: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { importId, storageId, alt, credit }) => {
+    const story = await ctx.db
+      .query("stories")
+      .withIndex("by_importId", (q) => q.eq("importId", importId))
+      .unique();
+    if (!story) throw new ConvexError(`No imported legend ${importId}.`);
+    const before = filesOf(story);
+    const scenes = scenesOf(story);
+    const last = scenes.length - 1;
+    const picture = { storageId, alt, credit };
+    const withPicture = await cleanScenes(
+      ctx,
+      scenes.map((scene, i) => (i === last ? { ...scene, illustrations: [picture] } : scene)),
+    );
+    const cover = await cleanCover(
+      ctx,
+      { kind: "image", ...picture, scale: 1, x: 0, y: 0 },
+      { scenes: withPicture, userId: story.authorId, storyFiles: before },
+    );
+    await ctx.db.patch("stories", story._id, { scenes: withPicture, cover });
+    await deleteUnusedFiles(ctx, before, filesOf({ scenes: withPicture, cover }));
+    return null;
   },
 });
 

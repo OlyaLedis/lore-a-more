@@ -45,7 +45,7 @@ export default function SignIn() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="font-serif text-3xl font-bold">
+      <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">
         {flow === 'signIn' ? 'Sign In' : 'Create an account'}
       </h1>
       <p className="mt-2 text-stone-500">

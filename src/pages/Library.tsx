@@ -18,7 +18,7 @@ export default function Library() {
       <div>
         <PageHeader title="Library" hideTitle />
         <div className="rounded-3xl border border-dashed border-stone-300 p-8 text-center">
-          <h2 className="font-serif text-2xl font-semibold">Keep your stories in one place</h2>
+          <h2 className="text-xl font-semibold tracking-tight">Keep your stories in one place</h2>
           <p className="mx-auto mt-2 max-w-md text-stone-600">
             Sign in to save stories, pick up where you left off, and keep track of places you've been.
           </p>
@@ -75,7 +75,7 @@ export default function Library() {
 function Section({ title, stories, empty }: { title: string; stories: CardStory[] | undefined; empty: ReactNode }) {
   return (
     <section className="mt-10 first-of-type:mt-0" aria-label={title}>
-      <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
+      <h2 className="text-xl font-semibold tracking-tight text-stone-700 sm:text-2xl">{title}</h2>
       {stories === undefined ? (
         <p className="mt-3 text-stone-500">Loading…</p>
       ) : stories.length === 0 ? (

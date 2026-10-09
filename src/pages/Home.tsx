@@ -137,9 +137,9 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
 
   return (
     <div>
-      <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-stone-900 sm:text-5xl">{heading}</h1>
+      <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">{heading}</h1>
       {/* A quiet line under the place: how many stories, and the two ways to go elsewhere. */}
-      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500 sm:text-base" aria-live="polite">
+      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500 sm:text-base" aria-live="polite">
         <span>
           {stories === undefined ? 'Finding stories…' : `${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`}
         </span>
@@ -159,7 +159,7 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
 
       {stories === undefined ? null : stories.length === 0 ? (
         <div className="mt-8 rounded-3xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
-          <h2 className="font-serif text-2xl font-semibold">
+          <h2 className="text-xl font-semibold tracking-tight">
             No stories {place.source === 'device' ? 'near' : 'in'} {where} yet
           </h2>
           <p className="mx-auto mt-2 max-w-md text-stone-600">
@@ -186,7 +186,7 @@ function PlaceStories({ place }: { place: SelectedPlace }) {
       ) : (
         <>
           {/* No heading above the featured story: it's simply the first story here. */}
-          <div className="mt-8">
+          <div className="mt-5">
             <FeaturedStoryCard story={nearest} note={note(nearest.distanceKm)} />
           </div>
 

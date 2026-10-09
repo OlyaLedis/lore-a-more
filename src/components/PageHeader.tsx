@@ -24,7 +24,7 @@ export function PageHeader({
   return (
     <header className="mb-8 flex items-end justify-between gap-4">
       <div>
-        <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl">{title}</h1>
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">{title}</h1>
         {subtitle && <p className="mt-2 text-stone-500">{subtitle}</p>}
       </div>
       {action}

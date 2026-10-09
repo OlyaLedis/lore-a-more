@@ -1,6 +1,7 @@
 import { useConvexAuth, useQuery } from 'convex/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import { useRecordPages } from '../backLink'
 import { api } from '../../convex/_generated/api'
 import { useSelectedPlace } from '../selectedPlace'
 import { HomeIcon, LibraryIcon, MapIcon, PlusIcon, SearchIcon } from './Icons'
@@ -22,11 +23,12 @@ function useOpeningScreen() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  useRecordPages()
   const opening = useOpeningScreen()
   // The Map tab gives the map as much of the screen as it can: little padding, and on phones the map
   // runs under the floating tab bar instead of stopping above it.
   const onMap = useLocation().pathname === '/map'
-  const padding = onMap ? 'pt-3 pb-0 md:pb-4 md:pt-4' : `pt-6 md:pb-16 md:pt-10 ${opening ? 'pb-8' : 'pb-32'}`
+  const padding = onMap ? 'pt-3 pb-0 md:pb-4 md:pt-4' : `pt-4 md:pb-16 md:pt-10 ${opening ? 'pb-8' : 'pb-32'}`
   return (
     <MapStatusProvider>
     <div className="min-h-screen bg-stone-50 text-stone-900">

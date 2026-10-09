@@ -176,10 +176,19 @@ LAT/LON, zoom, place, and a scale bar. Pages report into `MapStatusContext` (`sr
 sends its live centre, zoom, and scale. Story pages and Home with a chosen place use `usePlaceStatus`. Pages
 that don't report, including the opening screen, show no strip.
 
+**Type: serif is the story's own words.** Story titles (story page, map story sheet, cards, My stories,
+review queue), the type phrase ("A wonder tale"), and story text are serif. The app's own headings (page
+titles such as "Stories in X", Search, Library, Add a Story, Sign In, and section headings) are the sans-serif
+system font, semibold, in `text-stone-700` (story titles stay `stone-900`), `text-2xl sm:text-3xl` for page titles and
+`text-xl sm:text-2xl` for sections, so a page heading never competes with a story
+title. The exception is "Discover Local Stories" on the opening screen, a welcome beside the logo.
+
 **Story cards and covers.** Every story list (and Map popups and the review queue) uses `StoryCover` /
-`StoryCard` from `src/components/StoryCard.tsx`. Picture covers sit in a white paper frame with a 9% margin,
-fitted whole and then scaled and moved by `cover.scale` / `x` / `y`, which are display settings only.
-Without a picture the card uses the category gradient. Never put text inside the cover, except the small story-type tag (`categoryOne`, e.g. "Local Legend")
+`StoryCard` from `src/components/StoryCard.tsx`. Picture covers bleed: the picture fills the rounded
+square (`object-cover`, no frame; a faint outline keeps white pictures apart from the page), then is scaled and
+moved by `cover.scale` / `x` / `y`, which are display settings only (the saved file is never cropped).
+Without a picture the card uses the category gradient. The featured card's cover without a picture is 3:2 on phones
+(`wideOnPhone`), so its title shows without scrolling; picture covers are always square. Never put text inside the cover, except the small story-type tag (`categoryOne`, e.g. "Local Legend")
 on the large featured cover. `stories.cover` is
 `{ kind: "image", storageId, alt, credit?, scale, x, y }` or `{ kind: "colors" }`. Stories without `cover`
 fall back to their first illustration (`cardCoverOf` in `convex/covers.ts`). `cleanCover` accepts a picture
@@ -200,6 +209,13 @@ used, and dropped; there's no background tracking. `src/components/HereProvider.
 only when the reader taps Use My Location. It never asks on load or after sign-in, even if the browser
 already allows it. `request()` returns the position or why it failed, and the position is rounded to about
 1 km. `stories.remove` also deletes a story's rows in these tables and in `collectionEntries`.
+
+**Back links.** The story page and the new-story form show a back arrow named for where the reader came
+from ("← Map", "← Search", "← Home"; "← Back" for other pages), and none when there's no page before it in
+the tab (opened from a shared link: the logo goes home). `src/backLink.ts`: `useRecordPages` (in `AppShell`)
+records each page by its place in the history (React Router's `idx`, in sessionStorage), `useBackLink` names
+the previous one and goes back. Reading mode's Close goes back when the story page is the page before, so
+the story's back link never leads into reading mode.
 
 **Navigation.** `src/components/AppShell.tsx` holds the top bar (Add a Story, plus the initials avatar
 that links to `/account`) and the phone bottom bar (Home / Map / Library, plus a separate Search
@@ -236,7 +252,11 @@ the site's Wikipedia or Wikidata entry. Every story must be place-bound: tied to
 place that matters to the story, named in `place`. Don't add famous myths without a specific anchor.
 `node scripts/import-legends.ts [--prod]` turns them into published stories (`legends:importLegends`,
 owned by a "StoryPlace" account with no sign-in, matched by `importId`, so re-running updates them and
-keeps their codes). `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
+keeps their codes, and any pictures: `keepPictures`). `node scripts/legend-pictures.ts <pictures.json> [--prod]`
+uploads pictures (`legends:pictureUploadUrl`) and makes each one a legend's cover and the illustration after its
+text (`legends:setPicture`, replacing an earlier one). The files and list stay outside the repo; the four
+Eppstein-area legends (93, 94, 95, 108) have FPO placeholder pictures from a printed book in the dev
+deployment only, credited as such, to be replaced before going public. `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
 with a `link` to each story. Hosting: Vercel builds with `npx convex deploy --cmd 'npm run build'`
 (`vercel.json`); README section 11 has the production setup.
 

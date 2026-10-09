@@ -75,19 +75,23 @@ function colorCover(category: StoredCategory | undefined) {
 }
 
 // The square cover, the same everywhere a story appears. It never carries text: the title,
-// category, and age sit below it. A picture sits in a white paper frame with a 9% margin, fitted
-// whole (never cropped), then scaled and moved by the author's settings and kept inside the
-// rounded square. Without a picture, the category's colors and a soft circle.
+// category, and age sit below it. A picture fills the rounded square edge to edge (a picture that
+// isn't square is trimmed at its sides on the card, never in the saved file), then scaled and moved
+// by the author's settings. Without a picture, the category's colors and a soft circle.
 export function StoryCover({
   category,
   cover,
   tag,
+  wideOnPhone = false,
   className = '',
 }: {
   category?: StoredCategory
   cover?: CardCover | null
   // A small story-type label in the corner, used only on the large featured cover.
   tag?: string
+  // The featured cover on a phone: 3:2 instead of square when there's no picture, so the story's title
+  // shows without scrolling. Pictures stay square, as their authors framed them.
+  wideOnPhone?: boolean
   className?: string
 }) {
   const tagLabel = tag && (
@@ -97,26 +101,33 @@ export function StoryCover({
   )
   if (cover) {
     return (
-      <div className={`relative aspect-square overflow-hidden rounded-2xl bg-white ring-1 ring-stone-200 ${className}`}>
+      <div className={`relative aspect-square overflow-hidden rounded-2xl bg-stone-100 ring-1 ring-stone-900/10 ${className}`}>
         {tagLabel}
-        <div className="absolute inset-[9%]">
-          <img
-            src={cover.url}
-            alt=""
-            loading="lazy"
-            draggable={false}
-            className="absolute inset-0 h-full w-full object-contain"
-            style={{ transform: `translate(${cover.x * 100}%, ${cover.y * 100}%) scale(${cover.scale})` }}
-          />
-        </div>
+        <img
+          src={cover.url}
+          alt=""
+          loading="lazy"
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ transform: `translate(${cover.x * 100}%, ${cover.y * 100}%) scale(${cover.scale})` }}
+        />
       </div>
     )
   }
   return (
-    <div className={`relative aspect-square overflow-hidden rounded-2xl ${className}`} style={colorCover(category)}>
+    <div
+      className={`relative overflow-hidden rounded-2xl ${wideOnPhone ? 'aspect-[3/2] sm:aspect-square' : 'aspect-square'} ${className}`}
+      style={colorCover(category)}
+    >
       {tagLabel}
-      {/* A soft circle for depth; purely decorative. */}
-      <div className="pointer-events-none absolute -right-[22%] -top-[22%] h-[85%] w-[85%] rounded-full bg-white/25" />
+      {/* A soft circle for depth; purely decorative. On the wide cover it's smaller, so it stays round. */}
+      <div
+        className={`pointer-events-none absolute aspect-square rounded-full bg-white/25 ${
+          wideOnPhone
+            ? '-right-[12%] -top-[33%] w-[62%] sm:-right-[22%] sm:-top-[22%] sm:w-[85%]'
+            : '-right-[22%] -top-[22%] w-[85%]'
+        }`}
+      />
     </div>
   )
 }
@@ -131,7 +142,7 @@ export function StoryCardBody({ story, note }: { story: CardStory; note?: string
         cover={story.cover}
         className="transition group-hover:brightness-105 group-hover:ring-stone-400"
       />
-      <p className="mt-3 line-clamp-2 h-[2.6em] text-[17px] font-semibold leading-[1.3] tracking-tight text-stone-900 group-hover:underline sm:text-lg">
+      <p className="mt-3 line-clamp-2 h-[2.6em] font-serif text-[17px] font-semibold leading-[1.3] text-stone-900 group-hover:underline sm:text-lg">
         {story.title}
       </p>
       <div className="mt-1.5 flex h-6 items-center gap-2">
@@ -169,17 +180,18 @@ export function FeaturedStoryCard({ story, note }: { story: CardStory; note?: st
     <Link
       to={storyPath(story)}
       aria-label={cardDescription(story, note)}
-      className={`group flex flex-col gap-4 rounded-3xl sm:flex-row sm:items-center sm:gap-8 ${cardFocus}`}
+      className={`group flex flex-col gap-3 rounded-3xl sm:flex-row sm:items-center sm:gap-8 ${cardFocus}`}
     >
       <StoryCover
         category={story.category}
         cover={story.cover}
         tag={story.category && categoryOne(story.category)}
+        wideOnPhone
         className="w-full shrink-0 transition group-hover:brightness-105 sm:w-72 md:w-80"
       />
       <div className="min-w-0">
         {note && <p className="text-sm font-semibold text-orange-700">{note}</p>}
-        <p className="mt-1 line-clamp-3 text-2xl font-bold leading-tight tracking-tight text-stone-900 group-hover:underline sm:text-3xl">
+        <p className="mt-1 line-clamp-3 font-serif text-[1.75rem] font-bold leading-tight text-stone-900 group-hover:underline sm:text-4xl">
           {story.title}
         </p>
         <div className="mt-3 flex items-center gap-3">
@@ -214,7 +226,7 @@ export function Section({
   return (
     <section className="mt-12" aria-label={title}>
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-stone-700 sm:text-2xl">{title}</h2>
         {seeAll && (
           <Link to={seeAll} className="shrink-0 text-sm font-medium text-orange-700 hover:underline">
             See all

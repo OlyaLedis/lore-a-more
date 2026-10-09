@@ -28,7 +28,7 @@ export default function PlaceAll() {
       <Link to="/" className="text-sm font-medium text-stone-600 hover:text-stone-900">
         ← {placeHeading(place)}
       </Link>
-      <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+      <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">
         {known ? `${known.label} ${where}` : `All stories ${where}`}
       </h1>
       {shown === undefined ? (

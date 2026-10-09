@@ -5,7 +5,8 @@ import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { ReadingView } from '../components/ReadingView'
 import { useRecordView } from '../useRecordView'
-import { storyPath } from '../storyLinks'
+import { storyKey, storyPath } from '../storyLinks'
+import { previousPage } from '../backLink'
 
 const positionKey = (id: string) => `storyplace.position.${id}`
 
@@ -66,7 +67,13 @@ export default function ReadPage() {
       // The account's saved place wins; otherwise this browser's.
       initialAnchor={saved ?? localPosition(story._id)}
       onPosition={onPosition}
-      onClose={() => navigate(storyPath(story))}
+      // Back to the story page. Usually that's the page before (Read together), so go back rather than
+      // add it again, or the story's back link would lead into reading mode.
+      onClose={() => {
+        const before = previousPage()
+        if (before && !before.endsWith('/read') && before.startsWith(`/story/${storyKey(story)}`)) navigate(-1)
+        else navigate(storyPath(story), { replace: true })
+      }}
     />
   )
 }

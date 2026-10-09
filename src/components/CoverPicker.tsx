@@ -90,8 +90,8 @@ export function CoverPicker({
     <fieldset>
       <legend className="mb-1 text-sm font-medium">Choose a cover</legend>
       <p className="mb-3 text-sm text-stone-500">
-        The square on your story’s card. Pictures sit on a white paper frame and are never cropped; without one,
-        the card uses your category’s colors.
+        The square on your story’s card. A picture fills the square (move and resize it to choose what shows);
+        without one, the card uses your category’s colors.
       </p>
 
       <div role="radiogroup" aria-label="Cover" className="flex flex-wrap gap-3">
@@ -346,7 +346,7 @@ function FramingPreview({
     >
       <StoryCover cover={{ url: cover.url!, scale: cover.scale, x: cover.x, y: cover.y }} className="shadow-sm" />
       <p id={hintId} className="sr-only">
-        The picture is shown on a white paper frame and is never cropped in the saved file.
+        The picture fills the square; the parts outside it are hidden on the card but never cut from the saved file.
       </p>
     </div>
   )
