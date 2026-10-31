@@ -36,7 +36,7 @@ Olga needs access to two things. Both are invitations Bakhtiar sends:
 
 | Access | How | Status |
 | --- | --- | --- |
-| GitHub repo `mikhak/olga` | Repo → Settings → Collaborators | ✅ Invited — Olga, accept it from your email or github.com/notifications |
+| GitHub repo `OlyaLedis/lore-a-more` | Repo → Settings → Collaborators → invite Bakhtiar | ☐ To do |
 | Convex project `olga` | [dashboard.convex.dev](https://dashboard.convex.dev) → team settings → **Members** → invite Olga's email | ☐ To do |
 
 Joining the Convex team lets Olga use the same project. Convex gives every team member their **own
@@ -91,7 +91,7 @@ Pick a folder for your projects, then clone the repo and install its packages:
 
 ```sh
 cd ~/Desktop
-git clone https://github.com/mikhak/olga.git
+git clone https://github.com/OlyaLedis/lore-a-more.git olga
 cd olga
 npm install
 ```
@@ -426,7 +426,7 @@ project → switch to **Production** (top left) → **Settings** → **Deploy ke
 production deploy key**. Copy it. It's a secret: don't paste it anywhere else.
 
 **2. Create the Vercel project.** Sign in to Vercel with GitHub → **Add New… → Project** → import
-the `olga` repository. Before clicking **Deploy**, open **Environment Variables** and add:
+the `lore-a-more` repository. Before clicking **Deploy**, open **Environment Variables** and add:
 
 | Name | Value |
 | --- | --- |
