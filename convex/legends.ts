@@ -133,6 +133,33 @@ export const setPicture = internalMutation({
   },
 });
 
+// The legends' pictures with download links, to copy them to another deployment
+// (scripts/export-legend-pictures.ts): each legend's cover and the illustration after its text, as
+// setPicture puts them.
+const pictureOut = v.object({ storageId: v.id("_storage"), url: v.string(), alt: v.string(), credit: v.optional(v.string()) });
+export const pictureList = internalQuery({
+  args: {},
+  returns: v.array(v.object({ importId: v.string(), title: v.string(), cover: v.union(pictureOut, v.null()), illustration: v.union(pictureOut, v.null()) })),
+  handler: async (ctx) => {
+    const legends = await ctx.db
+      .query("stories")
+      .withIndex("by_importId", (q) => q.gt("importId", ""))
+      .take(1000);
+    const out = [];
+    for (const story of legends) {
+      const withUrl = async (p: { storageId: Id<"_storage">; alt: string; credit?: string } | undefined) => {
+        const url = p && (await ctx.storage.getUrl(p.storageId));
+        return p && url ? { storageId: p.storageId, url, alt: p.alt, credit: p.credit } : null;
+      };
+      const scenes = scenesOf(story);
+      const illustration = await withUrl(scenes[scenes.length - 1]?.illustrations[0]);
+      const cover = await withUrl(story.cover?.kind === "image" ? story.cover : undefined);
+      if (cover || illustration) out.push({ importId: story.importId!, title: story.title, cover, illustration });
+    }
+    return out;
+  },
+});
+
 // Every published story with a place, for exporting to Felt (scripts/felt-export.ts).
 export const forExport = internalQuery({
   args: {},

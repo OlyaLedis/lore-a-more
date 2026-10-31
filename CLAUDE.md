@@ -263,7 +263,9 @@ owned by a "Loramore" account with no sign-in, matched by `importId`, so re-runn
 keeps their codes, and any pictures: `keepPictures`). `node scripts/legend-pictures.ts <pictures.json> [--prod]`
 uploads pictures (`legends:pictureUploadUrl`) and makes each one a legend's cover and the illustration after its
 text (`legends:setPicture`, replacing an earlier one; `"use": "cover"` or `"illustration"` sets only one, so a legend
-can have a cover of its own, which re-imports keep). The files and list stay outside the repo; the
+can have a cover of its own, which re-imports keep). `node scripts/export-legend-pictures.ts <folder>` saves the dev
+deployment's legend pictures and a matching `pictures.json` (via `legends:pictureList`), to copy them to production
+with `legend-pictures.ts --prod` after `import-legends --prod`. The files and list stay outside the repo; the
 Rhine–Main legends 93, 94, 96, 97, 104, 108, 114, and 117 have FPO placeholder pictures (from a printed book; 104 a drawing)
 in the dev deployment only, credited as such, to be replaced before going public; 95, 98, and 115 have the final
 illustrations (no credit), also in dev only so far. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
