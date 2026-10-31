@@ -55,7 +55,7 @@ export default function SignIn() {
       </p>
       {flow === 'signIn' && (
         <p className="mt-5 rounded-2xl bg-orange-50 px-4 py-3 text-stone-800 ring-1 ring-orange-200">
-          New to StoryPlace?{' '}
+          New to Loramore?{' '}
           <button type="button" onClick={() => switchTo('signUp')} className="font-semibold text-orange-800 underline">
             Create an account
           </button>

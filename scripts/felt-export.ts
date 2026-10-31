@@ -4,7 +4,7 @@
 //   node scripts/felt-export.ts https://your-app.vercel.app            # from your dev deployment
 //   node scripts/felt-export.ts https://your-app.vercel.app --prod     # from production
 //
-// Writes storyplace-stories.geojson to your Downloads folder. Links use the story's permanent code
+// Writes loramore-stories.geojson to your Downloads folder. Links use the story's permanent code
 // (see convex/storyCodes.ts), so they keep working if a story is renamed later.
 import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
@@ -62,6 +62,6 @@ const features = stories.map((s) => ({
   },
 }))
 
-const out = join(homedir(), 'Downloads', 'storyplace-stories.geojson')
+const out = join(homedir(), 'Downloads', 'loramore-stories.geojson')
 writeFileSync(out, JSON.stringify({ type: 'FeatureCollection', features }, null, 1))
 console.log(`Wrote ${features.length} stories to ${out}`)

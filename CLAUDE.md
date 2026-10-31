@@ -2,7 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-StoryPlace, a story-sharing app: signed-in users submit stories, an admin approves them, and approved
+Loramore (called StoryPlace until October 2026, a name still in internal keys such as `storyplace.*` storage
+keys, `window.storyplaceMap`, and map layer ids; story codes keep the `SP-` prefix), a story-sharing app: signed-in users submit stories, an admin approves them, and approved
 stories appear in a public feed. React 19 + Vite 8 + TypeScript 6 + Tailwind 4 frontend (`src/`), Convex
 backend (`convex/`), email/password auth via `@convex-dev/auth`. `README.md` is the human setup guide.
 
@@ -51,7 +52,8 @@ stories, which show them without a search link and get a neutral map dot, and th
 author to choose again (never mapped by guess). New stories and edits require `category`, `ageRange`, and `source`, and
 can have up to 3 `themes` (19 topics such as Dragons & serpents, Saints & miracles, Funny). All four are listed in `convex/taxonomy.ts`, which the frontend imports too. The first theme list (sea, forest, adventure, mystery, family) is retired: `legacyTheme` keeps it valid on saved stories, where it still shows and filters, but new stories and edits can't choose it, and the edit form asks the author to pick current topics instead of mapping old ones.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
-the edit form asks the author instead. Home has two states. With no place chosen it shows only a centred "Discover Local Stories" heading,
+the edit form asks the author instead. Home has two states. With no place chosen it shows only the large hand-lettered logo (`src/assets/logo.svg`, traced from the
+drawing; the header shows it small, and hides it on this screen), a centred "Discover Local Stories" heading,
 a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
 just the logo and Sign In (`useOpeningScreen` in `AppShell`). Choosing a place (search) or Use My
 Location (device) sets the `SelectedPlace` (`src/selectedPlace.ts`, kept in `sessionStorage` for the tab so
@@ -77,7 +79,13 @@ replaced pending edit, a direct edit, or a delete are removed from storage (`del
 uploaded but never submitted are not cleaned up yet. Reading mode is `/story/:id/read`
 (`src/components/ReadingView.tsx`): auto-scroll stops at each picture and on any manual scroll, there's
 no auto-scroll under reduced motion, and the position is an anchor like `s2:3` saved to
-`readingPositions` (signed in) and localStorage. Scenes have stable ids so an optional sound cue can be
+`readingPositions` (signed in) and localStorage. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
+at least 1.4 times as wide as tall, which would be 1.4 times wider than the column at its panorama
+height (at most 1.1 times the column's width), is shown tall and scrolls sideways, with faded edges, a
+"Swipe to look around" hint on touch screens, and arrow buttons where there's a mouse. Decided from the
+picture's shape and the room, so nothing is stored, and on a wide screen the same picture may just fit.
+It opens at its middle on the story page; reading mode starts at its left edge and, when it stops at the
+picture, pans slowly to the right once (any touch stops it). Scenes have stable ids so an optional sound cue can be
 added later as an optional field; there is no audio now.
 
 **Map style.** All maps use `BaseMap` (`src/components/StoryMap.tsx`). Its base map comes from
@@ -251,12 +259,17 @@ over Wikipedia, which is for discovery only; the file's header lists the order. 
 the site's Wikipedia or Wikidata entry. Every story must be place-bound: tied to a real, identifiable
 place that matters to the story, named in `place`. Don't add famous myths without a specific anchor.
 `node scripts/import-legends.ts [--prod]` turns them into published stories (`legends:importLegends`,
-owned by a "StoryPlace" account with no sign-in, matched by `importId`, so re-running updates them and
+owned by a "Loramore" account with no sign-in, matched by `importId`, so re-running updates them and
 keeps their codes, and any pictures: `keepPictures`). `node scripts/legend-pictures.ts <pictures.json> [--prod]`
 uploads pictures (`legends:pictureUploadUrl`) and makes each one a legend's cover and the illustration after its
-text (`legends:setPicture`, replacing an earlier one). The files and list stay outside the repo; the four
-Eppstein-area legends (93, 94, 95, 108) have FPO placeholder pictures from a printed book in the dev
-deployment only, credited as such, to be replaced before going public. `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
+text (`legends:setPicture`, replacing an earlier one; `"use": "cover"` or `"illustration"` sets only one, so a legend
+can have a cover of its own, which re-imports keep). The files and list stay outside the repo; the
+Rhine–Main legends 93, 94, 96, 97, 104, 108, 114, and 117 have FPO placeholder pictures (from a printed book; 104 a drawing)
+in the dev deployment only, credited as such, to be replaced before going public; 95, 98, and 115 have the final
+illustrations (no credit), also in dev only so far. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
+service worker that precaches the built app only; Convex data and MapTiler are never cached). Icons in
+`public/` are the logo on stone-50, rendered from `src/assets/logo.svg`.
+`node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
 with a `link` to each story. Hosting: Vercel builds with `npx convex deploy --cmd 'npm run build'`
 (`vercel.json`); README section 11 has the production setup.
 

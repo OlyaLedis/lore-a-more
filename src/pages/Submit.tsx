@@ -72,7 +72,7 @@ export default function Submit() {
           ? { title: '', author: '', scenes: [emptyScene()], cover: { kind: 'colors' }, location: startPlace, themes: [] }
           : undefined
       }
-      intro="A moderator reads every submission. Your story will appear on StoryPlace once it's approved."
+      intro="A moderator reads every submission. Your story will appear on Loramore once it's approved."
       submitLabel="Submit for review"
       onSave={async (values) => {
         await submit(values)
@@ -117,7 +117,7 @@ export function EditStory() {
       intro={
         published
           ? 'Your changes go to a moderator first. Readers keep seeing the published version until they are approved.'
-          : 'Your changes go to a moderator before the story appears on StoryPlace.'
+          : 'Your changes go to a moderator before the story appears on Loramore.'
       }
       notice={
         story.revisionStatus === 'pending'

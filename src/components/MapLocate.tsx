@@ -31,7 +31,7 @@ export function MapLocate({ map }: { map: LeafletMap | null }) {
     if ('error' in result) {
       setMessage(
         result.error === 'denied'
-          ? 'Location is turned off for StoryPlace. You can allow it in your browser’s settings.'
+          ? 'Location is turned off for Loramore. You can allow it in your browser’s settings.'
           : 'We couldn’t get your location just now.',
       )
       return

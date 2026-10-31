@@ -31,7 +31,7 @@ test("imported legends are published with a code; importing again updates them a
   expect(await t.mutation(internal.legends.importLegends, { legends: [legend("The Giant")] })).toEqual({ added: 1, updated: 0 });
   const [first] = await t.query(api.discover.search, { text: "Giant" });
   const story = await t.query(api.stories.get, { id: first.code! });
-  expect(story).toMatchObject({ status: "approved", author: "StoryPlace", title: "The Giant" });
+  expect(story).toMatchObject({ status: "approved", author: "Loramore", title: "The Giant" });
 
   expect(await t.mutation(internal.legends.importLegends, { legends: [legend("The Giant of Eppstein")] })).toEqual({ added: 0, updated: 1 });
   expect((await t.query(api.stories.get, { id: first.code! }))?.title).toBe("The Giant of Eppstein");
@@ -59,4 +59,31 @@ test("a legend's picture becomes its cover and illustration, and importing again
   const next = await storeImage(t);
   await t.mutation(internal.legends.setPicture, { importId: "legend-1", storageId: next, alt: "Sleepers" });
   expect(await t.run(async (ctx) => await ctx.db.system.get("_storage", picture))).toBeNull();
+});
+
+test("a legend can have a cover of its own, apart from its illustration", async () => {
+  const { t } = await setupUsers();
+  await t.mutation(internal.legends.importLegends, { legends: [legend("The Dragon")] });
+  const wide = await storeImage(t);
+  await t.mutation(internal.legends.setPicture, { importId: "legend-1", storageId: wide, alt: "A long dragon" });
+  const knight = await storeImage(t);
+  await t.mutation(internal.legends.setPicture, { importId: "legend-1", storageId: knight, alt: "A knight", use: "cover" });
+
+  const [card] = await t.query(api.discover.search, { text: "Dragon" });
+  const story = await t.query(api.stories.get, { id: card.code! });
+  expect(story?.cover).toMatchObject({ kind: "image", storageId: knight });
+  expect(story?.scenes[0].illustrations).toMatchObject([{ storageId: wide }]);
+
+  // Importing again keeps both.
+  await t.mutation(internal.legends.importLegends, { legends: [legend("The Dragon")] });
+  const again = await t.query(api.stories.get, { id: card.code! });
+  expect(again?.cover).toMatchObject({ kind: "image", storageId: knight });
+  expect(again?.scenes[0].illustrations).toMatchObject([{ storageId: wide }]);
+
+  // A new illustration only leaves the cover alone.
+  const other = await storeImage(t);
+  await t.mutation(internal.legends.setPicture, { importId: "legend-1", storageId: other, alt: "Another", use: "illustration" });
+  const last = await t.query(api.stories.get, { id: card.code! });
+  expect(last?.cover).toMatchObject({ kind: "image", storageId: knight });
+  expect(await t.run(async (ctx) => await ctx.db.system.get("_storage", wide))).toBeNull();
 });

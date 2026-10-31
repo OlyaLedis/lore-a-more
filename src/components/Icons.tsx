@@ -1,4 +1,4 @@
-// Simple line icons (24×24, currentColor), drawn for StoryPlace.
+// Simple line icons (24×24, currentColor), drawn for Loramore.
 type IconProps = { className?: string }
 
 const base = {

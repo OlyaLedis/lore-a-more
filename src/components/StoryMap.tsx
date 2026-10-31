@@ -138,7 +138,7 @@ function OneWorld() {
   return null
 }
 
-// The calm base map: drawn from the vector style with StoryPlace's colours once
+// The calm base map: drawn from the vector style with Loramore's colours once
 // MapLibre has loaded (only map pages download it). Until then, and if it fails, the ready-made image tiles show, so the
 // map is never blank.
 function CalmBase() {

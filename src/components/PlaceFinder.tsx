@@ -35,7 +35,7 @@ function fromStoryPlace(p: { place: string; lat: number; lng: number; storyCount
   return {
     key: `storyplace:${p.place}`,
     name: p.place,
-    context: `${p.storyCount} ${p.storyCount === 1 ? 'story' : 'stories'} on StoryPlace`,
+    context: `${p.storyCount} ${p.storyCount === 1 ? 'story' : 'stories'} on Loramore`,
     group: 'storyplace',
     target: { label: p.place, center: { lat: p.lat, lng: p.lng }, radiusKm: 15 },
   }
@@ -51,7 +51,7 @@ function fromPlace(p: PlaceResult): Suggestion {
   }
 }
 
-// The place search on Home: a real text field with suggestions from StoryPlace's own saved place
+// The place search on Home: a real text field with suggestions from Loramore's own saved place
 // names and from MapTiler. Choosing a suggestion, pressing Enter, or the arrow button finds the place.
 export function PlaceFinder({
   onFind,
@@ -229,7 +229,7 @@ export function PlaceFinder({
                   <li key={s.key} role="presentation">
                     {header && (
                       <p role="presentation" className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-stone-400">
-                        {header === 'storyplace' ? 'On StoryPlace' : 'Places'}
+                        {header === 'storyplace' ? 'On Loramore' : 'Places'}
                       </p>
                     )}
                     <div

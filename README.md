@@ -1,4 +1,4 @@
-# StoryPlace
+# Loramore
 
 A place where people share stories for others to read. Writers sign in and submit a story; it stays
 hidden until a moderator approves it, then it appears in the public feed. Writers can edit or
@@ -175,8 +175,8 @@ but writers have to mark places by clicking a map.
 For the published site, set `VITE_MAPTILER_KEY` in the hosting provider's build settings too, since
 `.env.local` never leaves your computer.
 
-The same key draws the maps: MapTiler's calm **Dataviz Light** style, with StoryPlace's own soft green
-forests and grey-blue water (set in `src/mapStyle.ts`). To give StoryPlace its own map style,
+The same key draws the maps: MapTiler's calm **Dataviz Light** style, with Loramore's own soft green
+forests and grey-blue water (set in `src/mapStyle.ts`). To give Loramore its own map style,
 open [cloud.maptiler.com](https://cloud.maptiler.com/) → **Maps**, choose Dataviz Light → **Customize**, adjust
 colours and fonts, save, and copy the new map's ID into `.env.local`:
 
@@ -456,6 +456,12 @@ npx convex run --prod storyCodes:backfill
 Then sign up on the live site and run
 `npx convex run --prod users:setAdmin '{"email":"you@example.com"}'`.
 
+**6. Install it on a phone.** The app is installable (a PWA): it opens from the home screen in its
+own window, and the app itself opens without a connection (stories and maps still need one).
+On an iPhone: open the address in **Safari** → **Share** → **Add to Home Screen**. On Android: open
+it in **Chrome** → **⋮** → **Install app** (or **Add to Home screen**). After a new version is
+deployed, the installed app updates itself the next time it's opened.
+
 ---
 
 ## 12. Export the stories to Felt
@@ -466,7 +472,7 @@ To use the stories on a [Felt](https://felt.com) map, export them with links bac
 node scripts/felt-export.ts https://olga-xyz.vercel.app --prod
 ```
 
-This writes `storyplace-stories.geojson` to your Downloads folder. Drag it onto a Felt map. Each
+This writes `loramore-stories.geojson` to your Downloads folder. Drag it onto a Felt map. Each
 story has a `link` to its page (using its permanent code, so the link survives renames), plus
 category, topics, age, place, and source. To match the app's colours, style the layer by
 `category`: Local Legends `#889ADD`, Stories of a Place `#50957F`, Folktales & Myths `#EB9360`, each

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { byline } from '../format'
 import { CloseIcon } from './Icons'
+import { Illustration } from './Illustration'
 import { Lightbox, type Picture } from './Lightbox'
 
 export type ReadingScene = {
@@ -404,19 +405,18 @@ export function ReadingView({
                 const picture = { url: ill.url, alt: ill.alt, credit: ill.credit }
                 return (
                   <figure key={anchor} data-anchor={anchor} data-picture className="mb-12">
-                    <button
-                      type="button"
-                      onClick={() => {
+                    <Illustration
+                      picture={picture}
+                      maxHeight="60vh"
+                      start="start"
+                      pan={waiting}
+                      onOpen={() => {
                         if (state === 'playing') setState('paused')
                         setEnlarged(picture)
                       }}
-                      className={`block w-full overflow-hidden rounded-2xl focus-visible:outline-4 focus-visible:outline-orange-500 ${
-                        waiting ? 'ring-4 ring-orange-500 ring-offset-4 ring-offset-transparent' : ''
-                      }`}
-                      aria-label={`View larger: ${ill.alt}`}
-                    >
-                      <img src={ill.url} alt={ill.alt} className="mx-auto max-h-[60vh] w-auto" />
-                    </button>
+                      highlight={waiting}
+                      className="focus-visible:outline-4 focus-visible:outline-orange-500"
+                    />
                     <figcaption className={`mt-3 text-base ${quiet}`}>
                       {ill.credit ? `Illustration: ${ill.credit}` : ill.alt}
                     </figcaption>

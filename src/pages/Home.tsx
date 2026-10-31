@@ -1,3 +1,4 @@
+import logo from '../assets/logo.svg'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -67,7 +68,7 @@ function DiscoverStart() {
         tone: 'error',
         content:
           result.error === 'denied'
-            ? 'Location access is turned off for StoryPlace. You can search for a place instead, or allow location in your browser’s settings.'
+            ? 'Location access is turned off for Loramore. You can search for a place instead, or allow location in your browser’s settings.'
             : 'We couldn’t get your location just now. Search for a place instead, or try again.',
       })
       return
@@ -82,6 +83,7 @@ function DiscoverStart() {
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center pb-10 text-center md:min-h-[calc(100dvh-12rem)]">
+      <img src={logo} alt="Loramore" className="mb-6 h-20 w-auto sm:mb-8 sm:h-28" />
       <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-stone-900 sm:text-6xl">
         Discover Local Stories
       </h1>

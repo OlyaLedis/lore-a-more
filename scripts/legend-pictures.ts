@@ -4,13 +4,15 @@
 //
 //   [{ "importId": "legend-93", "file": "giant.jpg", "alt": "…", "credit": "…" }, …]
 //
+// Add "use": "cover" or "use": "illustration" to set only one of the two and keep the other.
+//
 //   node scripts/legend-pictures.ts <pictures.json>           # your dev deployment
 //   node scripts/legend-pictures.ts <pictures.json> --prod    # production
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, extname, resolve } from 'node:path'
 
-type Picture = { importId: string; file: string; alt: string; credit?: string }
+type Picture = { importId: string; file: string; alt: string; credit?: string; use?: 'cover' | 'illustration' }
 
 const listPath = process.argv[2]
 if (!listPath || listPath.startsWith('--')) {
@@ -37,6 +39,6 @@ for (const picture of pictures) {
   const response = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': type }, body: readFileSync(path) })
   if (!response.ok) throw new Error(`Uploading ${picture.file} failed: ${response.status}`)
   const { storageId } = (await response.json()) as { storageId: string }
-  convex('legends:setPicture', { importId: picture.importId, storageId, alt: picture.alt, credit: picture.credit })
-  console.log(`${picture.importId}: ${picture.file}`)
+  convex('legends:setPicture', { importId: picture.importId, storageId, alt: picture.alt, credit: picture.credit, use: picture.use })
+  console.log(`${picture.importId}: ${picture.file}${picture.use ? ` (${picture.use} only)` : ''}`)
 }

@@ -1,6 +1,7 @@
 import { useConvexAuth, useQuery } from 'convex/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import logo from '../assets/logo.svg'
 import { useRecordPages } from '../backLink'
 import { api } from '../../convex/_generated/api'
 import { useSelectedPlace } from '../selectedPlace'
@@ -51,8 +52,15 @@ function TopBar({ opening }: { opening: boolean }) {
       {/* Coordinates of whatever place is on screen; empty (hidden) on pages without one. */}
       <MapStatusBar />
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link to="/" className="font-serif text-xl font-semibold tracking-tight sm:text-2xl">
-          Story<span className="text-orange-600">Place</span>
+        {/* The hand-lettered name, traced from the drawing (src/assets/logo.svg). The opening screen shows
+            it large instead, so here it keeps its place but isn't shown. */}
+        <Link
+          to="/"
+          aria-hidden={opening || undefined}
+          tabIndex={opening ? -1 : undefined}
+          className={`-my-1 shrink-0 ${opening ? 'invisible' : ''} rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-600`}
+        >
+          <img src={logo} alt="Loramore" className="h-10 w-auto sm:h-11" />
         </Link>
 
         <nav aria-label="Main" className={opening ? 'hidden' : 'hidden items-center gap-1 md:flex'}>

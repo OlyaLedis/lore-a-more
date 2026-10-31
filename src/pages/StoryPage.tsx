@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
+import { Illustration } from '../components/Illustration'
 import { Lightbox, type Picture } from '../components/Lightbox'
 import { ReaderActions, SeasonalToggle } from '../components/ReaderActions'
 import { StoryTags } from '../components/StoryCard'
@@ -142,14 +143,11 @@ export default function StoryPage() {
             (ill) =>
               ill.url && (
                 <figure key={ill.storageId} className="mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setEnlarged({ url: ill.url!, alt: ill.alt, credit: ill.credit })}
-                    aria-label={`View larger: ${ill.alt}`}
-                    className="block w-full overflow-hidden rounded-2xl"
-                  >
-                    <img src={ill.url} alt={ill.alt} className="mx-auto max-h-[28rem] w-auto" />
-                  </button>
+                  <Illustration
+                    picture={{ url: ill.url, alt: ill.alt, credit: ill.credit }}
+                    maxHeight="28rem"
+                    onOpen={() => setEnlarged({ url: ill.url!, alt: ill.alt, credit: ill.credit })}
+                  />
                   {ill.credit && (
                     <figcaption className="mt-2 text-sm text-stone-500">Illustration: {ill.credit}</figcaption>
                   )}

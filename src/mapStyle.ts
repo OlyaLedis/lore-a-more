@@ -1,8 +1,8 @@
-// StoryPlace's map style, in one place: every map in the app (Map tab, story pages, location picker)
+// Loramore's map style, in one place: every map in the app (Map tab, story pages, location picker)
 // uses this base map and these pin colours.
 //
 // The base map is MapTiler's "Dataviz Light", drawn in the browser from its vector style (MapLibre) so
-// StoryPlace can set a few colours itself: soft green woods and grass, grey-blue water, everything
+// Loramore can set a few colours itself: soft green woods and grass, grey-blue water, everything
 // else calm and pale, close to Felt's look. Until that loads, or if it can't, the same style shows as
 // ready-made image tiles. To use your own style, copy Dataviz Light in MapTiler's style editor (cloud.maptiler.com → Maps → Customize), adjust
 // it, and set its map ID in .env.local as VITE_MAPTILER_MAP_STYLE. No code change is needed.
@@ -40,7 +40,7 @@ type StyleLayer = {
 }
 type MapStyle = { layers: StyleLayer[]; sources: Record<string, unknown> }
 
-// StoryPlace's version of the base style: the Felt-like look below. A custom MapTiler style
+// Loramore's version of the base style: the Felt-like look below. A custom MapTiler style
 // (VITE_MAPTILER_MAP_STYLE) is used as it is. The drawn map stays at every zoom: no satellite photos and,
 // like Felt, no contour lines.
 export function storyPlaceStyle<T extends MapStyle>(style: T): T {

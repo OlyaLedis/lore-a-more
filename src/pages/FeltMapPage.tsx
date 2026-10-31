@@ -25,7 +25,7 @@ export default function FeltMapPage() {
       />
       {/* Same size as the Map tab's map, so the two compare side by side. */}
       <iframe
-        title="Felt map of StoryPlace stories"
+        title="Felt map of Loramore stories"
         src={FELT_MAP_URL}
         referrerPolicy="strict-origin-when-cross-origin"
         className="block h-[calc(100dvh-15rem)] min-h-80 w-full rounded-lg border border-stone-300 md:h-[36rem]"

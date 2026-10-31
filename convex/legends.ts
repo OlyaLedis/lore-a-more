@@ -13,10 +13,10 @@ import { internalMutation, internalQuery, type MutationCtx } from "./_generated/
 import { cleanStoryInput, storyInputObject } from "./stories";
 import { newStoryCode } from "./storyCodes";
 import { cleanCover, filesOf } from "./covers";
-import { cleanScenes, deleteUnusedFiles, scenesOf, storageIdsOf } from "./scenes";
+import { cleanScenes, deleteUnusedFiles, scenesOf } from "./scenes";
 
 // The byline on imported legends: the short retellings are ours; the source note names the original.
-const BYLINE = "StoryPlace";
+const BYLINE = "Loramore";
 
 const legend = v.object({
   importId: v.string(),
@@ -46,7 +46,7 @@ export const importLegends = internalMutation({
         .withIndex("by_importId", (q) => q.eq("importId", importId))
         .unique();
       // The legends file has no pictures. Pictures added later (setPicture) stay with their scene, and the
-      // cover stays while its picture does, so importing again never wipes them.
+      // cover stays (one of the scene pictures or a cover of its own), so importing again never wipes them.
       const before = filesOf(existing);
       const kept = existing ? keepPictures(story, existing) : story;
       const content = await cleanStoryInput(
@@ -79,16 +79,13 @@ function keepPictures(story: Infer<typeof storyInputObject>, existing: Doc<"stor
   const scenes = story.scenes.map((scene) =>
     scene.illustrations.length === 0 && old.has(scene.id) ? { ...scene, illustrations: old.get(scene.id)! } : scene,
   );
-  const cover =
-    story.cover.kind === "colors" && existing.cover?.kind === "image" && storageIdsOf(scenes).has(existing.cover.storageId)
-      ? existing.cover
-      : story.cover;
+  const cover = story.cover.kind === "colors" && existing.cover?.kind === "image" ? existing.cover : story.cover;
   return { ...story, scenes, cover };
 }
 
 // Pictures for legends: upload a file to the URL from pictureUploadUrl, then setPicture makes it the
-// legend's cover and the illustration after its last scene (replacing an earlier one).
-//   scripts/legend-pictures.ts does both.
+// legend's cover and the illustration after its last scene (replacing an earlier one), or only one of
+// the two (`use`), keeping the other as it is. scripts/legend-pictures.ts does both steps.
 export const pictureUploadUrl = internalMutation({
   args: {},
   returns: v.string(),
@@ -96,9 +93,15 @@ export const pictureUploadUrl = internalMutation({
 });
 
 export const setPicture = internalMutation({
-  args: { importId: v.string(), storageId: v.id("_storage"), alt: v.string(), credit: v.optional(v.string()) },
+  args: {
+    importId: v.string(),
+    storageId: v.id("_storage"),
+    alt: v.string(),
+    credit: v.optional(v.string()),
+    use: v.optional(v.union(v.literal("cover"), v.literal("illustration"))),
+  },
   returns: v.null(),
-  handler: async (ctx, { importId, storageId, alt, credit }) => {
+  handler: async (ctx, { importId, storageId, alt, credit, use }) => {
     const story = await ctx.db
       .query("stories")
       .withIndex("by_importId", (q) => q.eq("importId", importId))
@@ -108,15 +111,22 @@ export const setPicture = internalMutation({
     const scenes = scenesOf(story);
     const last = scenes.length - 1;
     const picture = { storageId, alt, credit };
-    const withPicture = await cleanScenes(
-      ctx,
-      scenes.map((scene, i) => (i === last ? { ...scene, illustrations: [picture] } : scene)),
-    );
-    const cover = await cleanCover(
-      ctx,
-      { kind: "image", ...picture, scale: 1, x: 0, y: 0 },
-      { scenes: withPicture, userId: story.authorId, storyFiles: before },
-    );
+    const withPicture =
+      use === "cover"
+        ? scenes
+        : await cleanScenes(
+            ctx,
+            scenes.map((scene, i) => (i === last ? { ...scene, illustrations: [picture] } : scene)),
+          );
+    // A cover of its own isn't among the story's pictures; this internal mutation vouches for the upload.
+    const cover =
+      use === "illustration"
+        ? story.cover
+        : await cleanCover(
+            ctx,
+            { kind: "image", ...picture, scale: 1, x: 0, y: 0 },
+            { scenes: withPicture, userId: story.authorId, storyFiles: new Set([...before, storageId]) },
+          );
     await ctx.db.patch("stories", story._id, { scenes: withPicture, cover });
     await deleteUnusedFiles(ctx, before, filesOf({ scenes: withPicture, cover }));
     return null;
