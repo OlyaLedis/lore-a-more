@@ -75,10 +75,15 @@ export const importLegends = internalMutation({
 });
 
 function keepPictures(story: Infer<typeof storyInputObject>, existing: Doc<"stories">) {
-  const old = new Map(scenesOf(existing).map((scene) => [scene.id, scene.illustrations]));
-  const scenes = story.scenes.map((scene) =>
-    scene.illustrations.length === 0 && old.has(scene.id) ? { ...scene, illustrations: old.get(scene.id)! } : scene,
-  );
+  const existingScenes = scenesOf(existing);
+  const old = new Map(existingScenes.map((scene) => [scene.id, scene.illustrations]));
+  // The legends file holds one short scene. A story already loaded in full (scripts/import-story-folders.ts)
+  // keeps its scenes, so importing the file again never puts the summary back.
+  const scenes = story.scenes.length === 1 && existingScenes.length > 1
+    ? existingScenes
+    : story.scenes.map((scene) =>
+        scene.illustrations.length === 0 && old.has(scene.id) ? { ...scene, illustrations: old.get(scene.id)! } : scene,
+      );
   const cover = story.cover.kind === "colors" && existing.cover?.kind === "image" ? existing.cover : story.cover;
   return { ...story, scenes, cover };
 }

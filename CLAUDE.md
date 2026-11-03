@@ -267,8 +267,11 @@ can have a cover of its own, which re-imports keep). `node scripts/export-legend
 deployment's legend pictures and a matching `pictures.json` (via `legends:pictureList`), to copy them to production
 with `legend-pictures.ts --prod` after `import-legends --prod`. The files and list stay outside the repo; the
 Rhine–Main legends 93, 94, 96, 97, 104, 108, 114, and 117 have FPO placeholder pictures (from a printed book; 104 a drawing)
-in the dev deployment only, credited as such, to be replaced before going public; 95, 98, and 115 have the final
-illustrations (no credit), also in dev only so far. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
+on dev and production, credited as such, to be replaced before going public; 95, 98, and 115 have the final
+illustrations (no credit). `node scripts/import-story-folders.ts <folder> [--prod]` loads full stories from story folders
+(`093-giant-of-eppstein/story.md` and `images/`, kept out of the repo) onto the legends with the same number: only the
+`## Older` version for now, skipping pictures marked `PLACEHOLDER`. `import-legends` never replaces a story's several scenes
+with the file's one-scene summary. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
 service worker that precaches the built app only; Convex data and MapTiler are never cached). Icons in
 `public/` (a dotted path to a heart on `#3B2A5C`, the theme and background colour) are Olga's own;
 `icon-512.png` is also the maskable icon.

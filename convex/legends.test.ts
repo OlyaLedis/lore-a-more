@@ -38,6 +38,22 @@ test("imported legends are published with a code; importing again updates them a
   expect(await t.query(api.discover.search, {})).toHaveLength(1);
 });
 
+test("importing the one-scene legends file again keeps a story already loaded in full", async () => {
+  const { t } = await setupUsers();
+  const full = legend("The Giant");
+  const scenes = [
+    { id: "s1", text: "A giant lived in the gorges.", illustrations: [] },
+    { id: "s2", text: "Eppo set an iron net.", illustrations: [] },
+  ];
+  await t.mutation(internal.legends.importLegends, { legends: [{ ...full, story: { ...full.story, scenes } }] });
+  const [card] = await t.query(api.discover.search, { text: "Giant" });
+
+  await t.mutation(internal.legends.importLegends, { legends: [legend("The Giant of Eppstein")] });
+  const again = await t.query(api.stories.get, { id: card.code! });
+  expect(again?.title).toBe("The Giant of Eppstein");
+  expect(again?.scenes.map((scene) => scene.text)).toEqual(scenes.map((scene) => scene.text));
+});
+
 test("a legend's picture becomes its cover and illustration, and importing again keeps it", async () => {
   const { t } = await setupUsers();
   await t.mutation(internal.legends.importLegends, { legends: [legend("The Giant")] });
