@@ -5,6 +5,7 @@
 //
 //   node scripts/import-story-folders.ts <folder>           # your dev deployment
 //   node scripts/import-story-folders.ts <folder> --prod    # production
+//   node scripts/import-story-folders.ts <folder> --only=093    # just that story, with or without --prod
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
@@ -21,6 +22,7 @@ if (!folder || folder.startsWith('--')) {
   process.exit(1)
 }
 const prod = process.argv.includes('--prod')
+const only = process.argv.find((arg) => arg.startsWith('--only='))?.slice(7)
 
 function convex(fn: string, args: object): string {
   const result = spawnSync('npx', ['convex', 'run', fn, JSON.stringify(args), ...(prod ? ['--prod'] : [])], { encoding: 'utf8' })
@@ -67,7 +69,7 @@ function scenesIn(older: string) {
 
 const legends = []
 const covers: { importId: string; dir: string; cover: Picture }[] = []
-for (const name of readdirSync(folder).filter((f) => /^\d{3}-/.test(f)).sort()) {
+for (const name of readdirSync(folder).filter((f) => /^\d{3}-/.test(f) && (!only || f.startsWith(`${only}-`))).sort()) {
   const dir = resolve(folder, name)
   const md = readFileSync(join(dir, 'story.md'), 'utf8')
   const importId = `legend-${String(Number(name.slice(0, 3))).padStart(2, '0')}`

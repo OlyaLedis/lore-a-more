@@ -27,6 +27,7 @@ export function Illustration({
   pan = false,
   onOpen,
   highlight = false,
+  multiply = true,
   className = '',
 }: {
   picture: Picture
@@ -39,6 +40,9 @@ export function Illustration({
   onOpen: () => void
   // Reading mode's ring around the picture it stopped at.
   highlight?: boolean
+  // Multiplies the picture onto the page, so its white paper takes the page's colour and leaves no visible
+  // edge. Off on a dark page, where it would turn the picture nearly black.
+  multiply?: boolean
   // For the button around the picture (its focus ring).
   className?: string
 }) {
@@ -128,7 +132,7 @@ export function Illustration({
       alt={picture.alt}
       onLoad={(e) => setRatio(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
       draggable={false}
-      className={panorama ? 'block h-full w-auto max-w-none' : 'mx-auto w-auto'}
+      className={panorama ? 'block h-full w-auto max-w-none' : `mx-auto w-auto ${multiply ? 'mix-blend-multiply' : ''}`}
       style={panorama ? undefined : { maxHeight }}
     />
   )
@@ -162,7 +166,8 @@ export function Illustration({
         onPointerDown={takeOver}
         onWheel={takeOver}
         onTouchStart={takeOver}
-        className="scrollbar-none overflow-x-auto overscroll-x-contain rounded-2xl"
+        // On this box, not the picture: its fading edges would keep the picture from reaching the page.
+        className={`scrollbar-none overflow-x-auto overscroll-x-contain rounded-2xl ${multiply ? 'mix-blend-multiply' : ''}`}
         style={{ height: height!, maskImage: mask, WebkitMaskImage: mask }}
       >
         <button

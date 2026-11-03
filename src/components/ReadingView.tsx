@@ -415,6 +415,7 @@ export function ReadingView({
                         setEnlarged(picture)
                       }}
                       highlight={waiting}
+                      multiply={!dark}
                       className="focus-visible:outline-4 focus-visible:outline-orange-500"
                     />
                     <figcaption className={`mt-3 text-base ${quiet}`}>
