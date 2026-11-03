@@ -270,7 +270,8 @@ Rhine–Main legends 93, 94, 96, 97, 104, 108, 114, and 117 have FPO placeholder
 in the dev deployment only, credited as such, to be replaced before going public; 95, 98, and 115 have the final
 illustrations (no credit), also in dev only so far. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
 service worker that precaches the built app only; Convex data and MapTiler are never cached). Icons in
-`public/` are the logo on stone-50, rendered from `src/assets/logo.svg`.
+`public/` (a dotted path to a heart on `#3B2A5C`, the theme and background colour) are Olga's own;
+`icon-512.png` is also the maskable icon.
 `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
 with a `link` to each story. Hosting: Vercel builds with `npx convex deploy --cmd 'npm run build'`
 (`vercel.json`); README section 11 has the production setup.

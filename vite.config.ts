@@ -13,7 +13,7 @@ export default defineConfig({
     // still need one: they come live from Convex and MapTiler and aren't cached.
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'apple-touch-icon.png'],
+      includeAssets: ['favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Loramore',
         short_name: 'Loramore',
@@ -22,12 +22,14 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        theme_color: '#fafaf9',
-        background_color: '#fafaf9',
+        theme_color: '#3B2A5C',
+        background_color: '#3B2A5C',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          // The same picture as a maskable icon. Rounded-square crops keep all of it; the tightest circle crop
+          // trims the top right of the heart and the edge of the path's first dot.
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
