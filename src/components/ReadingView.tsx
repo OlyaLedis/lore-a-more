@@ -377,73 +377,78 @@ export function ReadingView({
           <h1 className="font-serif text-4xl font-bold leading-tight sm:text-6xl">{title}</h1>
           <p className={`mt-3 text-lg ${quiet}`}>{byline(author)}</p>
 
-          {blocks.map(({ scene, paragraphs }, sceneIndex) => (
-            <section key={scene.id} aria-label={`Scene ${sceneIndex + 1}`} className="mt-16">
-              {sceneIndex > 0 && (
-                <div aria-hidden className={`mb-16 text-center text-2xl ${quiet}`}>
-                  ✦
-                </div>
-              )}
-              {paragraphs.map((text, i) => {
-                const anchor = `${scene.id}:${i}`
-                return (
-                  <p
-                    key={anchor}
-                    data-anchor={anchor}
-                    className={`mb-10 whitespace-pre-line font-semibold leading-[1.45] tracking-tight transition-opacity duration-500 motion-reduce:transition-none ${
-                      SIZES[prefs.size]
-                    } ${dimmed(anchor)}`}
-                  >
-                    {text}
-                  </p>
-                )
-              })}
-              {scene.illustrations.map((ill, i) => {
+          {blocks.map(({ scene, paragraphs }, sceneIndex) => {
+              const figures = scene.illustrations.map((ill, i) => {
                 if (!ill.url) return null
                 const anchor = `${scene.id}:p${i}`
                 const waiting = waitingFor === anchor && state === 'waiting'
                 const picture = { url: ill.url, alt: ill.alt, credit: ill.credit }
                 return (
-                  <figure key={anchor} data-anchor={anchor} data-picture className="mb-12">
-                    <Illustration
-                      picture={picture}
-                      maxHeight="60vh"
-                      start="start"
-                      pan={waiting}
-                      onOpen={() => {
-                        if (state === 'playing') setState('paused')
-                        setEnlarged(picture)
-                      }}
-                      highlight={waiting}
-                      multiply={!dark}
-                      className="focus-visible:outline-4 focus-visible:outline-orange-500"
-                    />
-                    <figcaption className={`mt-3 text-base ${quiet}`}>
-                      {ill.credit ? `Illustration: ${ill.credit}` : ill.alt}
-                    </figcaption>
-                    {waiting && (
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setEnlarged(picture)}
-                          className={`rounded-full border px-5 py-2.5 font-semibold ${chip}`}
-                        >
-                          View larger
-                        </button>
-                        <button
-                          type="button"
-                          onClick={play}
-                          className="rounded-full bg-orange-600 px-5 py-2.5 font-semibold text-white hover:bg-orange-500"
-                        >
-                          Continue reading
-                        </button>
-                      </div>
-                    )}
-                  </figure>
-                )
-              })}
-            </section>
-          ))}
+                    <figure key={anchor} data-anchor={anchor} data-picture className="mb-12">
+                      <Illustration
+                        picture={picture}
+                        maxHeight="60vh"
+                        start="start"
+                        pan={waiting}
+                        onOpen={() => {
+                          if (state === 'playing') setState('paused')
+                          setEnlarged(picture)
+                        }}
+                        highlight={waiting}
+                        multiply={!dark}
+                        className="focus-visible:outline-4 focus-visible:outline-orange-500"
+                      />
+                      <figcaption className={`mt-3 text-base ${quiet}`}>
+                        {ill.credit ? `Illustration: ${ill.credit}` : ill.alt}
+                      </figcaption>
+                      {waiting && (
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setEnlarged(picture)}
+                            className={`rounded-full border px-5 py-2.5 font-semibold ${chip}`}
+                          >
+                            View larger
+                          </button>
+                          <button
+                            type="button"
+                            onClick={play}
+                            className="rounded-full bg-orange-600 px-5 py-2.5 font-semibold text-white hover:bg-orange-500"
+                          >
+                            Continue reading
+                          </button>
+                        </div>
+                      )}
+                    </figure>
+                  )
+                })
+              return (
+              <section key={scene.id} aria-label={`Scene ${sceneIndex + 1}`} className="mt-16">
+                {sceneIndex > 0 && (
+                  <div aria-hidden className={`mb-16 text-center text-2xl ${quiet}`}>
+                    ✦
+                  </div>
+                )}
+                {/* The story opens with its first picture, above the first paragraph. */}
+                {sceneIndex === 0 && figures[0]}
+                {paragraphs.map((text, i) => {
+                  const anchor = `${scene.id}:${i}`
+                  return (
+                    <p
+                      key={anchor}
+                      data-anchor={anchor}
+                      className={`mb-10 whitespace-pre-line font-semibold leading-[1.45] tracking-tight transition-opacity duration-500 motion-reduce:transition-none ${
+                        SIZES[prefs.size]
+                      } ${dimmed(anchor)}`}
+                    >
+                      {text}
+                    </p>
+                  )
+                })}
+                {sceneIndex === 0 ? figures.slice(1) : figures}
+              </section>
+            )
+          })}
 
           <div className="mt-20 text-center">
             <p className="font-serif text-3xl font-semibold">The end</p>

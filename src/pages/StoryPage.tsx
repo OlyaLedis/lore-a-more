@@ -129,33 +129,39 @@ export default function StoryPage() {
           <SeasonalToggle storyId={story._id} />
         </div>
       )}
-      {story.scenes.map((scene, i) => (
-        <section key={scene.id} aria-label={story.scenes.length > 1 ? `Scene ${i + 1}` : undefined} className="mt-8">
-          {i > 0 && (
-            <div aria-hidden className="mb-8 text-center text-stone-400">
-              ✦
-            </div>
-          )}
-          {scene.text && (
-            <div className="prose prose-stone prose-lg max-w-none whitespace-pre-wrap font-serif">{scene.text}</div>
-          )}
-          {scene.illustrations.map(
-            (ill) =>
-              ill.url && (
-                <figure key={ill.storageId} className="mt-6">
-                  <Illustration
-                    picture={{ url: ill.url, alt: ill.alt, credit: ill.credit }}
-                    maxHeight="28rem"
-                    onOpen={() => setEnlarged({ url: ill.url!, alt: ill.alt, credit: ill.credit })}
-                  />
-                  {ill.credit && (
-                    <figcaption className="mt-2 text-sm text-stone-500">Illustration: {ill.credit}</figcaption>
-                  )}
-                </figure>
-              ),
-          )}
-        </section>
-      ))}
+      {story.scenes.map((scene, i) => {
+        const figures = scene.illustrations.map(
+          (ill) =>
+            ill.url && (
+              <figure key={ill.storageId} className="mt-6">
+                <Illustration
+                  picture={{ url: ill.url, alt: ill.alt, credit: ill.credit }}
+                  maxHeight="28rem"
+                  onOpen={() => setEnlarged({ url: ill.url!, alt: ill.alt, credit: ill.credit })}
+                />
+                {ill.credit && (
+                  <figcaption className="mt-2 text-sm text-stone-500">Illustration: {ill.credit}</figcaption>
+                )}
+              </figure>
+            ),
+        )
+        // The story opens with its first picture, above the first paragraph.
+        const lead = i === 0 ? figures[0] : null
+        return (
+          <section key={scene.id} aria-label={story.scenes.length > 1 ? `Scene ${i + 1}` : undefined} className="mt-8">
+            {i > 0 && (
+              <div aria-hidden className="mb-8 text-center text-stone-400">
+                ✦
+              </div>
+            )}
+            {lead}
+            {scene.text && (
+              <div className={`prose prose-stone prose-lg max-w-none whitespace-pre-wrap font-serif ${lead ? 'mt-6' : ''}`}>{scene.text}</div>
+            )}
+            {i === 0 ? figures.slice(1) : figures}
+          </section>
+        )
+      })}
       <Lightbox picture={enlarged} onClose={() => setEnlarged(null)} />
       {/* Below the text: the writer's pen name (none for the curated legends, whose source note says where
           they come from) and the date. */}

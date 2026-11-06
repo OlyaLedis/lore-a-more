@@ -79,7 +79,7 @@ replaced pending edit, a direct edit, or a delete are removed from storage (`del
 uploaded but never submitted are not cleaned up yet. Reading mode is `/story/:id/read`
 (`src/components/ReadingView.tsx`): auto-scroll stops at each picture and on any manual scroll, there's
 no auto-scroll under reduced motion, and the position is an anchor like `s2:3` saved to
-`readingPositions` (signed in) and localStorage. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
+`readingPositions` (signed in) and localStorage. A story opens with its first picture, above the first paragraph; the rest follow their scene's text. Pictures are multiplied onto the page (`multiply`, off in dark reading mode), so white paper leaves no visible edge. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
 at least 1.4 times as wide as tall, which would be 1.4 times wider than the column at its panorama
 height (at most 1.1 times the column's width), is shown tall and scrolls sideways, with faded edges, a
 "Swipe to look around" hint on touch screens, and arrow buttons where there's a mouse. Decided from the
