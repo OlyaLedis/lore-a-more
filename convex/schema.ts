@@ -203,4 +203,29 @@ export default defineSchema({
     .index("by_collection_and_addedAt", ["collection", "addedAt"])
     .index("by_collection_and_storyId", ["collection", "storyId"])
     .index("by_storyId", ["storyId"]),
+
+  // A legendary being as one tradition tells it, for the grown-up telling the story: what people
+  // believed, what it does, and questions to ask. Drafted from source excerpts and reviewed by an
+  // editor (scripts/import-character-cards.ts); see convex/characters.ts.
+  characterCards: defineTable({
+    // Matches a card file when it's loaded again.
+    slug: v.string(),
+    name: v.string(),
+    localName: v.string(),
+    region: v.string(),
+    ageRange,
+    beliefs: v.array(v.string()),
+    plots: v.array(v.string()),
+    questions: v.array(v.string()),
+    // The excerpts' full citations.
+    sources: v.array(v.string()),
+  }).index("by_slug", ["slug"]),
+
+  // Which stories a character appears in. One being (a devil, say) can be in many.
+  characterStories: defineTable({
+    characterId: v.id("characterCards"),
+    storyId: v.id("stories"),
+  })
+    .index("by_characterId", ["characterId"])
+    .index("by_storyId", ["storyId"]),
 });

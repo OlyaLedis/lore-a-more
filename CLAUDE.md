@@ -271,7 +271,10 @@ on dev and production, credited as such, to be replaced before going public; 95,
 illustrations (no credit). `node scripts/import-story-folders.ts <folder> [--prod]` loads full stories from story folders
 (`093-giant-of-eppstein/story.md` and `images/`, kept out of the repo) onto the legends with the same number: only the
 `## Older` version for now, skipping pictures marked `PLACEHOLDER`. `import-legends` never replaces a story's several scenes
-with the file's one-scene summary. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
+with the file's one-scene summary. Character cards (`convex/characters.ts`, `CharacterCards` after the story text) describe a
+legendary being for the grown-up telling the story: drafted from source excerpts with `Lore-a-More Stories/character-card-prompt.md`,
+reviewed, and loaded by `node scripts/import-character-cards.ts "Lore-a-More Stories/Characters" [--prod]`, which loads only
+files marked `Status: reviewed` (`--drafts` adds drafts, dev only). `characterStories` links a card to its stories by number. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
 service worker that precaches the built app only; Convex data and MapTiler are never cached). Icons in
 `public/` (a dotted path to a heart on `#3B2A5C`, the theme and background colour) are Olga's own;
 `icon-512.png` is also the maskable icon.

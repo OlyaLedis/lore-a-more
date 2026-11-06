@@ -142,7 +142,7 @@ async function deleteByStory(
   ctx: MutationCtx,
   table: Extract<
     TableNames,
-    "savedStories" | "storyViews" | "placeVisits" | "collectionEntries" | "readingPositions"
+    "savedStories" | "storyViews" | "placeVisits" | "collectionEntries" | "readingPositions" | "characterStories"
   >,
   storyId: Id<"stories">,
 ) {
@@ -343,7 +343,7 @@ export const generateUploadUrl = mutation({
 });
 
 // Author deletes their story, along with any edit waiting for review, readers' saves and history,
-// and collection entries.
+// collection entries, and character links.
 export const remove = mutation({
   args: { id: v.id("stories") },
   handler: async (ctx, { id }) => {
@@ -356,6 +356,7 @@ export const remove = mutation({
     await deleteByStory(ctx, "storyViews", id);
     await deleteByStory(ctx, "placeVisits", id);
     await deleteByStory(ctx, "collectionEntries", id);
+    await deleteByStory(ctx, "characterStories", id);
     await ctx.db.delete(id);
   },
 });

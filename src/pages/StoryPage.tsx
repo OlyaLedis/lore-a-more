@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
+import { CharacterCards } from '../components/CharacterCard'
 import { Illustration } from '../components/Illustration'
 import { Lightbox, type Picture } from '../components/Lightbox'
 import { ReaderActions, SeasonalToggle } from '../components/ReaderActions'
@@ -163,6 +164,7 @@ export default function StoryPage() {
         )
       })}
       <Lightbox picture={enlarged} onClose={() => setEnlarged(null)} />
+      <CharacterCards storyId={story._id} />
       {/* Below the text: the writer's pen name (none for the curated legends, whose source note says where
           they come from) and the date. */}
       <p className="mt-8 text-sm text-stone-500">

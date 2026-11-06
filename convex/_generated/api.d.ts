@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as characters from "../characters.js";
 import type * as covers from "../covers.js";
 import type * as discover from "../discover.js";
 import type * as geo from "../geo.js";
@@ -30,6 +31,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  characters: typeof characters;
   covers: typeof covers;
   discover: typeof discover;
   geo: typeof geo;
