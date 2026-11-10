@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Ivory paper (`bg-paper`): the page behind illustrations, picture covers, and reading mode, in place of
+   white. Pictures are multiplied onto it, so their white paper turns ivory too. */
+@theme {
+  --color-paper: #f7f2e7;
+}
+
 /* Horizontal shelves scroll without a visible scrollbar; they still work with touch, trackpad, and keyboard. */
 @utility scrollbar-none {
   scrollbar-width: none;

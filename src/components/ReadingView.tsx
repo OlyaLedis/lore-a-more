@@ -324,9 +324,10 @@ export function ReadingView({
 
   const textClass = dark ? 'text-stone-50' : 'text-stone-950'
   const quiet = dark ? 'text-stone-400' : 'text-stone-600'
-  // The light page is pure white so illustrations drawn on white blend into it, with no visible edge.
-  const surface = dark ? 'bg-stone-950' : 'bg-white'
-  const bar = dark ? 'border-stone-800 bg-stone-900' : 'border-stone-200 bg-white'
+  // The light page is ivory paper; illustrations are multiplied onto it, so their white paper turns
+  // ivory with no visible edge.
+  const surface = dark ? 'bg-stone-950' : 'bg-paper'
+  const bar = dark ? 'border-stone-800 bg-stone-900' : 'border-stone-200 bg-paper'
   const chip = dark
     ? 'border-stone-700 text-stone-100 hover:bg-stone-800'
     : 'border-stone-300 text-stone-900 hover:bg-stone-100'

@@ -79,7 +79,7 @@ replaced pending edit, a direct edit, or a delete are removed from storage (`del
 uploaded but never submitted are not cleaned up yet. Reading mode is `/story/:id/read`
 (`src/components/ReadingView.tsx`): auto-scroll stops at each picture and on any manual scroll, there's
 no auto-scroll under reduced motion, and the position is an anchor like `s2:3` saved to
-`readingPositions` (signed in) and localStorage. A story opens with its first picture, above the first paragraph; the rest follow their scene's text. Pictures are multiplied onto the page (`multiply`, off in dark reading mode), so white paper leaves no visible edge. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
+`readingPositions` (signed in) and localStorage. A story opens with its first picture, above the first paragraph; the rest follow their scene's text. Pictures are multiplied onto ivory paper (`bg-paper`, #F7F2E7, the `--color-paper` theme colour in `index.css`; `multiply`, off in dark reading mode), so their white paper turns ivory with no visible edge. The light reading page is all paper; on the story page each picture sits on a paper panel. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
 at least 1.4 times as wide as tall, which would be 1.4 times wider than the column at its panorama
 height (at most 1.1 times the column's width), is shown tall and scrolls sideways, with faded edges, a
 "Swipe to look around" hint on touch screens, and arrow buttons where there's a mouse. Decided from the
@@ -193,7 +193,7 @@ title. The exception is "Discover Local Stories" on the opening screen, a welcom
 
 **Story cards and covers.** Every story list (and Map popups and the review queue) uses `StoryCover` /
 `StoryCard` from `src/components/StoryCard.tsx`. Picture covers bleed: the picture fills the rounded
-square (`object-cover`, no frame; a faint outline keeps white pictures apart from the page), then is scaled and
+square (`object-cover`, no frame, multiplied onto `bg-paper`; a faint outline keeps pale pictures apart from the page), then is scaled and
 moved by `cover.scale` / `x` / `y`, which are display settings only (the saved file is never cropped).
 Without a picture the card uses the category gradient. The featured card's cover without a picture is 3:2 on phones
 (`wideOnPhone`), so its title shows without scrolling; picture covers are always square. Never put text inside the cover, except the small story-type tag (`categoryOne`, e.g. "Local Legend")

@@ -101,14 +101,15 @@ export function StoryCover({
   )
   if (cover) {
     return (
-      <div className={`relative aspect-square overflow-hidden rounded-2xl bg-stone-100 ring-1 ring-stone-900/10 ${className}`}>
+      <div className={`relative aspect-square overflow-hidden rounded-2xl bg-paper ring-1 ring-stone-900/10 ${className}`}>
         {tagLabel}
         <img
           src={cover.url}
           alt=""
           loading="lazy"
           draggable={false}
-          className="absolute inset-0 h-full w-full object-cover"
+          // Multiplied onto the ivory paper, so a picture's white paper turns ivory.
+          className="absolute inset-0 h-full w-full object-cover mix-blend-multiply"
           style={{ transform: `translate(${cover.x * 100}%, ${cover.y * 100}%) scale(${cover.scale})` }}
         />
       </div>
