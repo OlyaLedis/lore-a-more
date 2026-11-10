@@ -83,18 +83,18 @@ function DiscoverStart() {
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center pb-10 text-center md:min-h-[calc(100dvh-12rem)]">
-      <img src={logo} alt="Loramore" className="mb-6 h-40 w-auto sm:mb-8 sm:h-52" />
-      <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-stone-900 sm:text-6xl">
+      <img src={logo} alt="Loramore" className="mb-6 h-50 w-auto sm:mb-8 sm:h-52" />
+      <h1 className="font-serif text-[1.42rem] font-normal italic leading-tight text-orange-700 sm:text-6xl">
         Discover Local Stories
       </h1>
-      <div className="mt-8 w-full max-w-xl text-left">
+      <div className="mt-8 w-[92%] max-w-lg text-left">
         <PlaceFinder onFind={onFind} onNoPlace={onNoPlace} describedBy={statusId} />
       </div>
       <button
         type="button"
         onClick={() => void locateMe()}
         disabled={locating}
-        className="mt-4 inline-flex h-12 items-center gap-2 rounded-full border border-stone-300 bg-white px-6 font-semibold text-stone-900 shadow-sm hover:border-stone-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
+        className="mt-4 inline-flex h-12 items-center gap-2 rounded-md px-2 font-semibold text-stone-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
       >
         <LocateIcon className={`h-5 w-5 text-orange-700 ${locating ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
         {locating ? 'Finding your location…' : 'Use My Location'}

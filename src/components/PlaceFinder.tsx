@@ -198,7 +198,7 @@ export function PlaceFinder({
           onKeyDown={onKeyDown}
           placeholder="Search a city, landmark, or place"
           // Room on the right only once the arrow button shows; the hint ends in "…" if it doesn't fit.
-          className={`h-14 w-full text-ellipsis rounded-full border-0 bg-white pl-12 text-base text-stone-900 shadow-sm ring-1 ring-stone-300 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900 sm:text-lg ${
+          className={`h-12 w-full text-ellipsis rounded-full border-0 bg-white pl-12 text-base text-stone-900 shadow-sm ring-1 ring-stone-300 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-900 sm:text-lg ${
             trimmed || finding ? 'pr-12' : 'pr-4'
           }`}
         />
@@ -208,7 +208,7 @@ export function PlaceFinder({
           disabled={finding}
           aria-label={finding ? 'Finding stories…' : 'Find stories'}
           title="Find stories"
-          className={`absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-orange-600 text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
+          className={`absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-orange-600 text-white hover:bg-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 ${
             trimmed || finding ? '' : 'invisible'
           }`}
         >

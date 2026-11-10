@@ -1,7 +1,7 @@
 import { useConvexAuth, useQuery } from 'convex/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import logo from '../assets/logo.svg'
+import logoMark from '../assets/logo-mark.svg'
 import { useRecordPages } from '../backLink'
 import { api } from '../../convex/_generated/api'
 import { useSelectedPlace } from '../selectedPlace'
@@ -52,15 +52,15 @@ function TopBar({ opening }: { opening: boolean }) {
       {/* Coordinates of whatever place is on screen; empty (hidden) on pages without one. */}
       <MapStatusBar />
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-        {/* The hand-lettered name, traced from the drawing (src/assets/logo.svg). The opening screen shows
-            it large instead, so here it keeps its place but isn't shown. */}
+        {/* The logo's boot-shaped "L" alone (src/assets/logo-mark.svg: logo.svg cropped to it). The opening
+            screen shows the whole logo large instead, so here it keeps its place but isn't shown. */}
         <Link
           to="/"
           aria-hidden={opening || undefined}
           tabIndex={opening ? -1 : undefined}
           className={`-my-1 shrink-0 ${opening ? 'invisible' : ''} rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-600`}
         >
-          <img src={logo} alt="Loramore" className="h-12 w-auto" />
+          <img src={logoMark} alt="Loramore" className="h-11 w-auto" />
         </Link>
 
         <nav aria-label="Main" className={opening ? 'hidden' : 'hidden items-center gap-1 md:flex'}>
