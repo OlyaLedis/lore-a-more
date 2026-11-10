@@ -276,8 +276,9 @@ legendary being for the grown-up telling the story: drafted from source excerpts
 reviewed, and loaded by `node scripts/import-character-cards.ts "Lore-a-More Stories/Characters" [--prod]`, which loads only
 files marked `Status: reviewed` (`--drafts` adds drafts, dev only). `characterStories` links a card to its stories by number. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
 service worker that precaches the built app only; Convex data and MapTiler are never cached). Icons in
-`public/` (a dotted path to a heart on `#3B2A5C`, the theme and background colour) are Olga's own;
-`icon-512.png` is also the maskable icon.
+`public/` are the logo's boot-shaped "L" (`logo-mark.svg`) in cream `#FDF3E7` on `#3B2A5C`, the theme and
+background colour; `icon-512.png` is also the maskable icon (the boot fits the safe circle), and the
+favicon shows the boot larger.
 `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
 with a `link` to each story. Hosting: Vercel builds with `npx convex deploy --cmd 'npm run build'`
 (`vercel.json`); README section 11 has the production setup.
