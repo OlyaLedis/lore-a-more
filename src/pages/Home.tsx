@@ -83,7 +83,7 @@ function DiscoverStart() {
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center pb-10 text-center md:min-h-[calc(100dvh-12rem)]">
-      <img src={logo} alt="Loramore" className="mb-6 h-20 w-auto sm:mb-8 sm:h-28" />
+      <img src={logo} alt="Loramore" className="mb-6 h-40 w-auto sm:mb-8 sm:h-52" />
       <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-stone-900 sm:text-6xl">
         Discover Local Stories
       </h1>

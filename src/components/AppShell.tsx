@@ -60,7 +60,7 @@ function TopBar({ opening }: { opening: boolean }) {
           tabIndex={opening ? -1 : undefined}
           className={`-my-1 shrink-0 ${opening ? 'invisible' : ''} rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-600`}
         >
-          <img src={logo} alt="Loramore" className="h-10 w-auto sm:h-11" />
+          <img src={logo} alt="Loramore" className="h-12 w-auto" />
         </Link>
 
         <nav aria-label="Main" className={opening ? 'hidden' : 'hidden items-center gap-1 md:flex'}>
