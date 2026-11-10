@@ -83,11 +83,11 @@ function DiscoverStart() {
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center pb-10 text-center md:min-h-[calc(100dvh-12rem)]">
-      <img src={logo} alt="Loramore" className="mb-6 h-50 w-auto sm:mb-8 sm:h-52" />
-      <h1 className="font-serif text-[1.42rem] font-normal italic leading-tight text-orange-700 sm:text-6xl">
+      <h1 className="mb-8 font-serif text-[1.42rem] font-normal italic leading-tight text-orange-700 sm:mb-6 sm:text-6xl">
         Discover Local Stories
       </h1>
-      <div className="mt-8 w-[92%] max-w-lg text-left">
+      <img src={logo} alt="Loramore" className="h-[10.5rem] w-auto sm:h-52" />
+      <div className="mt-12 w-[92%] max-w-lg text-left">
         <PlaceFinder onFind={onFind} onNoPlace={onNoPlace} describedBy={statusId} />
       </div>
       <button

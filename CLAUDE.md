@@ -53,7 +53,7 @@ author to choose again (never mapped by guess). New stories and edits require `c
 can have up to 3 `themes` (19 topics such as Dragons & serpents, Saints & miracles, Funny). All four are listed in `convex/taxonomy.ts`, which the frontend imports too. The first theme list (sea, forest, adventure, mystery, family) is retired: `legacyTheme` keeps it valid on saved stories, where it still shows and filters, but new stories and edits can't choose it, and the edit form asks the author to pick current topics instead of mapping old ones.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
 the edit form asks the author instead. Home has two states. With no place chosen it shows only the large hand-lettered logo (`src/assets/logo.svg`, traced from the
-drawing; the header shows only its boot-shaped "L", `src/assets/logo-mark.svg`, the same drawing cropped, and hides it on this screen), a centred "Discover Local Stories" heading (quiet serif italic),
+drawing; the header shows only its boot-shaped "L", `src/assets/logo-mark.svg`, the same drawing cropped, and hides it on this screen), a centred "Discover Local Stories" heading above it (quiet orange serif italic),
 a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
 just the logo and Sign In (`useOpeningScreen` in `AppShell`). Choosing a place (search) or Use My
 Location (device) sets the `SelectedPlace` (`src/selectedPlace.ts`, kept in `sessionStorage` for the tab so
@@ -260,7 +260,7 @@ the site's Wikipedia or Wikidata entry. Every story must be place-bound: tied to
 place that matters to the story, named in `place`. Don't add famous myths without a specific anchor.
 `node scripts/import-legends.ts [--prod]` turns them into published stories (`legends:importLegends`,
 owned by a "Loramore" account with no sign-in, matched by `importId`, so re-running updates them and
-keeps their codes, and any pictures: `keepPictures`). `node scripts/legend-pictures.ts <pictures.json> [--prod]`
+keeps their codes, and any pictures: `keepPictures`). `node scripts/legend-pictures.ts <pictures.json> [--prod]` (a story written in the app is named by `"code"` instead of `"importId"`)
 uploads pictures (`legends:pictureUploadUrl`) and makes each one a legend's cover and the illustration after its
 text (`legends:setPicture`, replacing an earlier one; `"use": "cover"` or `"illustration"` sets only one, so a legend
 can have a cover of its own, which re-imports keep). `node scripts/export-legend-pictures.ts <folder>` saves the dev

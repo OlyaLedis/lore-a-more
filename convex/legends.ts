@@ -97,21 +97,24 @@ export const pictureUploadUrl = internalMutation({
   handler: async (ctx) => await ctx.storage.generateUploadUrl(),
 });
 
+// Finds the story by its legend number (`importId`) or, for a story written in the app, by its code.
 export const setPicture = internalMutation({
   args: {
-    importId: v.string(),
+    importId: v.optional(v.string()),
+    code: v.optional(v.string()),
     storageId: v.id("_storage"),
     alt: v.string(),
     credit: v.optional(v.string()),
     use: v.optional(v.union(v.literal("cover"), v.literal("illustration"))),
   },
   returns: v.null(),
-  handler: async (ctx, { importId, storageId, alt, credit, use }) => {
-    const story = await ctx.db
-      .query("stories")
-      .withIndex("by_importId", (q) => q.eq("importId", importId))
-      .unique();
-    if (!story) throw new ConvexError(`No imported legend ${importId}.`);
+  handler: async (ctx, { importId, code, storageId, alt, credit, use }) => {
+    if ((importId === undefined) === (code === undefined)) throw new ConvexError("Give an importId or a code.");
+    const story =
+      importId !== undefined
+        ? await ctx.db.query("stories").withIndex("by_importId", (q) => q.eq("importId", importId)).unique()
+        : await ctx.db.query("stories").withIndex("by_code", (q) => q.eq("code", code!.toUpperCase())).unique();
+    if (!story) throw new ConvexError(`No story ${importId ?? code}.`);
     const before = filesOf(story);
     const scenes = scenesOf(story);
     const last = scenes.length - 1;
