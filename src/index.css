@@ -74,3 +74,37 @@
     display: none;
   }
 }
+
+/* The welcome logo's pupil (WelcomeLogo): still at first, then a quiet look left and right, and a long
+   rest before it looks again. One 7.5s cycle: hold centre 0.6s, to the left 0.35s, hold 0.25s, to the
+   right 0.4s, hold 0.3s, back to centre 0.35s, then rest 5.25s. The 0.9s delay plus the first hold makes
+   the first movement start 1.5s after the screen appears. 7 units is as far as it can go and stay inside
+   the eye. No movement with reduced motion. */
+@keyframes logo-pupil-look {
+  0%,
+  8% {
+    transform: translateX(0);
+  }
+  12.667%,
+  16% {
+    transform: translateX(-7px);
+  }
+  21.333%,
+  25.333% {
+    transform: translateX(7px);
+  }
+  30%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.logo-pupil {
+  animation: logo-pupil-look 7.5s ease-in-out 0.9s infinite both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-pupil {
+    animation: none;
+  }
+}

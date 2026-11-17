@@ -31,7 +31,10 @@ files with two dots when deploying, so neither reaches the deployment. Tests sig
 
 ## Architecture
 
-**Story lifecycle.** `stories.status` is `"pending" | "approved" | "rejected"`. `submit` always inserts
+**Story lifecycle.** `stories.status` is `"pending" | "approved" | "rejected"`. Every signed-in user may submit (no contributor roles or
+invitations); guests see Sign In instead of Add a Story and can read everything published. Pending stories show as
+"Pending review" to their author (My stories), and `convex/permissions.test.ts` checks that pending and rejected stories never
+reach `get` (for others), `list`, `mapped`, Search, Stories Near You, a library, or an illustrator's gallery. `submit` always inserts
 `pending`. `review` (admin only) sets the status and, on approval, `approvedAt`. The public feed
 (`stories.list`) reads `approved` stories through the `by_status_and_approvedAt` index, so it is
 ordered by publish time, not submission time. The review queue (`stories.pending`) uses the same index
@@ -56,10 +59,13 @@ can have up to 3 `themes` (19 topics such as Dragons & serpents, Saints & miracl
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
 the edit form asks the author instead. Home has two states. With no place chosen it shows only the large hand-lettered logo (`src/assets/logo.svg`, the final
 professional vector, used exactly as delivered: never redrawn, recoloured, filtered, or squeezed; it's the only place the full
-logo appears; the header shows only the boot-shaped "L", `src/assets/logo-mark.svg`, cropped from the earlier traced drawing,
-and hides it on this screen), a centred "Discover Local Stories" heading above it (quiet orange serif italic),
-a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
-just the logo and Sign In (`useOpeningScreen` in `AppShell`). Choosing a place (search) or Use My
+logo appears, shifted left by `LOGO_A_SHIFT` in `Home.tsx` so the centre of its "a" is on the screen's centre line; there it's drawn by `WelcomeLogo`, which reads
+`logo.svg` as text and splits off the pupil in the last "e" so it can glance left and right now and then (`.logo-pupil` in
+`index.css`: 1.5s before the first look, a 7.5s cycle, none with reduced motion); the header shows only its boot-shaped "L", `src/assets/logo-mark.svg`: the L's two shapes copied unchanged from
+`logo.svg` with a tight viewBox, linking Home; hidden on this screen), a centred "Discover Local Stories" heading above it (quiet orange serif italic),
+a `PlaceFinder` search field, and Use My Location; there are no story cards. Until a place is chosen
+this opening screen has no tabs or bottom bar, signed in or not (`useOpeningScreen` in `AppShell` depends only on the place);
+the header keeps Sign In (an outlined pill) or Add a Story and the avatar. Signing in is never needed to choose a place. Choosing a place (search) or Use My
 Location (device) sets the `SelectedPlace` (`src/selectedPlace.ts`, kept in `sessionStorage` for the tab so
 it survives sign-in). Home then shows a large serif "Stories in X" (or "Stories near X" for the device, named by
 `placeNameAt` reverse geocoding), a quiet "N stories · Change location · Show on map" line, the nearest
@@ -280,7 +286,7 @@ legendary being for the grown-up telling the story: drafted from source excerpts
 reviewed, and loaded by `node scripts/import-character-cards.ts "Lore-a-More Stories/Characters" [--prod]`, which loads only
 files marked `Status: reviewed` (`--drafts` adds drafts, dev only). `characterStories` links a card to its stories by number. The app is an installable PWA (`vite-plugin-pwa` in `vite.config.ts`: manifest, auto-updating
 service worker that precaches the built app only; Convex data and MapTiler are never cached). Icons in
-`public/` are the logo's boot-shaped "L" (`logo-mark.svg`) in cream `#FDF3E7` on `#3B2A5C`, the theme and
+`public/` are the boot-shaped "L" of the earlier traced logo (not yet the final vector) in cream `#FDF3E7` on `#3B2A5C`, the theme and
 background colour; `icon-512.png` is also the maskable icon (the boot fits the safe circle), and the
 favicon shows the boot larger.
 `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt

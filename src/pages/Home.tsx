@@ -1,4 +1,3 @@
-import logo from '../assets/logo.svg'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -7,11 +6,18 @@ import { NEARBY_KM } from '../../convex/geo'
 import { CATEGORIES, isCurrentCategory } from '../../convex/taxonomy'
 import { LocateIcon } from '../components/Icons'
 import { PlaceFinder, type FindTarget } from '../components/PlaceFinder'
+import { WelcomeLogo } from '../components/WelcomeLogo'
 import { CardRow, FeaturedStoryCard, Section, StoryCard } from '../components/StoryCard'
 import { placeNameAt } from '../geocoding'
 import { useHere } from '../here'
 import { usePlaceStatus } from '../mapStatus'
 import { distanceFrom, placeHeading, useSelectedPlace, type SelectedPlace } from '../selectedPlace'
+
+// The logo is centred on its "a" rather than on its box: the middle of the "a" (x 441.71 in the SVG's
+// coordinates, its outline from 397.69 to 485.73) sits 30.69 units right of the logo's centre (411.02, the
+// middle of its 647.838-wide viewBox). Moving the logo left by that share of its own width puts the "a"
+// on the screen's centre line at any size. Measured from src/assets/logo.svg; remeasure if it changes.
+const LOGO_A_SHIFT = `${(-(441.71 - 411.02) / 647.838) * 100}%`
 
 // How many stories each section shows before "See all".
 const PER_SECTION = 4
@@ -81,20 +87,23 @@ function DiscoverStart() {
     choose({ source: 'device', label: name ?? 'you', center: result.position, radiusKm: NEARBY_KM })
   }
 
+  // One group (heading, logo, search, Use My Location) centred in the height left under the header (3.5rem)
+  // and the page's own padding (3rem on phones, 6.5rem from md), lifted a little (3.5dvh) to the eye’s centre.
+  // It's a minimum height, so a very short screen scrolls instead of clipping.
   return (
-    <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center pb-10 text-center md:min-h-[calc(100dvh-12rem)]">
-      <h1 className="mb-8 font-serif text-[1.42rem] font-normal italic leading-tight text-orange-700 sm:mb-6 sm:text-6xl">
+    <div className="flex min-h-[calc(100dvh-6.5rem)] flex-col items-center justify-center pb-[3.5dvh] text-center md:min-h-[calc(100dvh-10rem)]">
+      <h1 className="mb-[1.625rem] font-serif text-[1.42rem] font-normal italic leading-tight text-orange-700 sm:mb-5 sm:text-6xl">
         Discover Local Stories
       </h1>
-      <img src={logo} alt="Lore-a-More" className="h-[10.5rem] w-auto sm:h-52" />
-      <div className="mt-12 w-[92%] max-w-lg text-left">
+      <WelcomeLogo className="h-[11.65rem] w-auto sm:h-[14.4rem]" style={{ transform: `translateX(${LOGO_A_SHIFT})` }} />
+      <div className="mt-10 w-[92%] max-w-lg text-left">
         <PlaceFinder onFind={onFind} onNoPlace={onNoPlace} describedBy={statusId} />
       </div>
       <button
         type="button"
         onClick={() => void locateMe()}
         disabled={locating}
-        className="mt-4 inline-flex h-12 items-center gap-2 rounded-md px-2 font-semibold text-stone-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
+        className="mt-2 inline-flex h-12 items-center gap-2 rounded-md px-2 font-semibold text-stone-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900 disabled:opacity-70"
       >
         <LocateIcon className={`h-5 w-5 text-orange-700 ${locating ? 'animate-pulse motion-reduce:animate-none' : ''}`} />
         {locating ? 'Finding your location…' : 'Use My Location'}

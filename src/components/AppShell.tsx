@@ -1,4 +1,4 @@
-import { useConvexAuth, useQuery } from 'convex/react'
+import { useQuery } from 'convex/react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import logoMark from '../assets/logo-mark.svg'
@@ -14,13 +14,13 @@ const tabs = [
   { to: '/library', label: 'Library', Icon: LibraryIcon, end: false },
 ]
 
-// A signed-out visitor who hasn't chosen a place yet sees a clean opening screen: just the logo and
-// Sign In, no tabs and no bottom bar.
+// Until a place is chosen, Home is a clean opening screen: the logo, the place search, and the header's
+// account controls (Sign In, or Add a Story and the avatar), with no tabs and no bottom bar. Choosing a
+// place, by search or Use My Location, opens the app. Signing in is separate and never required.
 function useOpeningScreen() {
-  const { isLoading, isAuthenticated } = useConvexAuth()
   const { place } = useSelectedPlace()
   const { pathname } = useLocation()
-  return pathname === '/' && !place && !isLoading && !isAuthenticated
+  return pathname === '/' && !place
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -52,15 +52,15 @@ function TopBar({ opening }: { opening: boolean }) {
       {/* Coordinates of whatever place is on screen; empty (hidden) on pages without one. */}
       <MapStatusBar />
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-        {/* The logo's boot-shaped "L" alone (src/assets/logo-mark.svg: logo.svg cropped to it). The opening
-            screen shows the whole logo large instead, so here it keeps its place but isn't shown. */}
+        {/* The logo's boot-shaped "L" alone (src/assets/logo-mark.svg: its shapes copied from logo.svg), linking
+            Home. The opening screen shows the whole logo large instead, so here it keeps its place but isn't shown. */}
         <Link
           to="/"
           aria-hidden={opening || undefined}
           tabIndex={opening ? -1 : undefined}
           className={`-my-1 shrink-0 ${opening ? 'invisible' : ''} rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-600`}
         >
-          <img src={logoMark} alt="Loramore" className="h-11 w-auto" />
+          <img src={logoMark} alt="Lore-a-More, home" className="h-11 w-auto" />
         </Link>
 
         <nav aria-label="Main" className={opening ? 'hidden' : 'hidden items-center gap-1 md:flex'}>
@@ -110,7 +110,7 @@ function TopBar({ opening }: { opening: boolean }) {
               <Link
                 to="/signin"
                 state={{ from: here }}
-                className="rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
+                className="inline-flex h-10 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 hover:border-stone-500 hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
               >
                 Sign In
               </Link>

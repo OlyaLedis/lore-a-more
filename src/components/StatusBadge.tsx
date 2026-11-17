@@ -7,7 +7,7 @@ const styles: Record<Doc<'stories'>['status'], string> = {
 }
 
 const labels: Record<Doc<'stories'>['status'], string> = {
-  pending: 'Pending approval',
+  pending: 'Pending review',
   approved: 'Published',
   rejected: 'Not approved',
 }
@@ -20,7 +20,7 @@ export function StatusBadge({ status }: { status: Doc<'stories'>['status'] }) {
 
 // The status of an author's edit to a published story.
 export function RevisionBadge({ status }: { status: Doc<'storyRevisions'>['status'] | null }) {
-  if (status === 'pending') return <span className={`${badge} ${styles.pending}`}>Edits pending approval</span>
+  if (status === 'pending') return <span className={`${badge} ${styles.pending}`}>Edits pending review</span>
   if (status === 'rejected') return <span className={`${badge} ${styles.rejected}`}>Edits not approved</span>
   return null
 }
