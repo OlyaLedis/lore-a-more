@@ -22,6 +22,7 @@ import { usePlaceStatus } from '../mapStatus'
 import { dotColor, mapCategory } from '../mapStories'
 import { useRecordView } from '../useRecordView'
 import { readPath, storyKey, storyPath } from '../storyLinks'
+import { joinPictureOnlyScenes, layoutScene } from '../sceneLayout'
 
 export default function StoryPage() {
   const { id = '' } = useParams()
@@ -130,7 +131,7 @@ export default function StoryPage() {
           <SeasonalToggle storyId={story._id} />
         </div>
       )}
-      {story.scenes.map((scene, i) => {
+      {joinPictureOnlyScenes(story.scenes).map((scene, i, scenes) => {
         const figures = scene.illustrations.map(
           (ill) =>
             ill.url && (
@@ -146,20 +147,29 @@ export default function StoryPage() {
               </figure>
             ),
         )
-        // The story opens with its first picture, above the first paragraph.
-        const lead = i === 0 ? figures[0] : null
+        // The story begins with text; its first picture follows the first paragraph and the others are
+        // spread through the text, never two in a row (src/sceneLayout.ts).
         return (
-          <section key={scene.id} aria-label={story.scenes.length > 1 ? `Scene ${i + 1}` : undefined} className="mt-8">
-            {i > 0 && (
+          <section key={scene.id} aria-label={scenes.length > 1 ? `Scene ${i + 1}` : undefined} className="mt-8">
+            {/* ✦ between scenes only where text meets text: a scene with pictures ends with one, which
+                already divides it from the next. */}
+            {i > 0 && scenes[i - 1].illustrations.length === 0 && (
               <div aria-hidden className="mb-8 text-center text-stone-400">
                 ✦
               </div>
             )}
-            {lead}
-            {scene.text && (
-              <div className={`prose prose-stone prose-lg max-w-none whitespace-pre-wrap font-serif ${lead ? 'mt-6' : ''}`}>{scene.text}</div>
+            {layoutScene(scene.text, figures.length, i === 0).map((block, b) =>
+              block.kind === 'picture' ? (
+                figures[block.index]
+              ) : (
+                <div
+                  key={`t${block.index}`}
+                  className={`prose prose-stone prose-lg max-w-none whitespace-pre-wrap font-serif ${b > 0 ? 'mt-6' : ''}`}
+                >
+                  {block.text}
+                </div>
+              ),
             )}
-            {i === 0 ? figures.slice(1) : figures}
           </section>
         )
       })}

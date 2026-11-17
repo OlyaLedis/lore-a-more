@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { byline } from '../format'
 import { CloseIcon } from './Icons'
+import { joinPictureOnlyScenes, layoutScene } from '../sceneLayout'
 import { Illustration } from './Illustration'
 import { Lightbox, type Picture } from './Lightbox'
 
@@ -57,13 +58,6 @@ function usePrefersReducedMotion() {
   return reduced
 }
 
-function paragraphsOf(text: string) {
-  return text
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-}
-
 // Full-screen reading mode: large type, optional slow auto-scroll that stops at each picture and
 // whenever the reader scrolls, and a remembered position. Works fully by hand, too.
 export function ReadingView({
@@ -112,9 +106,11 @@ export function ReadingView({
 
   const blocks = useMemo(
     () =>
-      scenes.map((scene) => ({
+      // The story begins with text; its first picture follows the first paragraph and the others are
+      // spread through the text, never two in a row (src/sceneLayout.ts).
+      joinPictureOnlyScenes(scenes).map((scene, i) => ({
         scene,
-        paragraphs: paragraphsOf(scene.text),
+        layout: layoutScene(scene.text, scene.illustrations.length, i === 0),
       })),
     [scenes],
   )
@@ -377,7 +373,7 @@ export function ReadingView({
           <h1 className="font-serif text-4xl font-bold leading-tight sm:text-6xl">{title}</h1>
           <p className={`mt-3 text-lg ${quiet}`}>{byline(author)}</p>
 
-          {blocks.map(({ scene, paragraphs }, sceneIndex) => {
+          {blocks.map(({ scene, layout }, sceneIndex) => {
               const figures = scene.illustrations.map((ill, i) => {
                 if (!ill.url) return null
                 const anchor = `${scene.id}:p${i}`
@@ -424,15 +420,15 @@ export function ReadingView({
                 })
               return (
               <section key={scene.id} aria-label={`Scene ${sceneIndex + 1}`} className="mt-16">
-                {sceneIndex > 0 && (
+                {/* ✦ only where text meets text: a scene with pictures ends with one. */}
+                {sceneIndex > 0 && blocks[sceneIndex - 1].scene.illustrations.length === 0 && (
                   <div aria-hidden className={`mb-16 text-center text-2xl ${quiet}`}>
                     ✦
                   </div>
                 )}
-                {/* The story opens with its first picture, above the first paragraph. */}
-                {sceneIndex === 0 && figures[0]}
-                {paragraphs.map((text, i) => {
-                  const anchor = `${scene.id}:${i}`
+                {layout.map((block) => {
+                  if (block.kind === 'picture') return figures[block.index]
+                  const anchor = `${scene.id}:${block.index}`
                   return (
                     <p
                       key={anchor}
@@ -441,11 +437,10 @@ export function ReadingView({
                         SIZES[prefs.size]
                       } ${dimmed(anchor)}`}
                     >
-                      {text}
+                      {block.text}
                     </p>
                   )
                 })}
-                {sceneIndex === 0 ? figures.slice(1) : figures}
               </section>
             )
           })}
