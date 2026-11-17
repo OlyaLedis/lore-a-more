@@ -1,5 +1,7 @@
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import { useBackLink } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { IllustratorCard } from '../components/IllustratorCard'
 import { PageHeader } from '../components/PageHeader'
 import { usePageMeta } from '../illustrators'
@@ -8,9 +10,11 @@ import { usePageMeta } from '../illustrators'
 // and from Search, not from the main navigation.
 export default function IllustratorsPage() {
   const all = useQuery(api.illustrators.directory, {})
+  const back = useBackLink({ to: '/', label: 'Home' })
   usePageMeta({ title: 'Illustrators', description: 'The artists who illustrate Loramore’s local legends.' })
   return (
     <div>
+      <BackLink back={back} className="mb-3" />
       <PageHeader title="Illustrators" subtitle="The artists who bring Loramore’s stories to life." />
       {all === undefined ? (
         <p className="text-stone-500">Loading…</p>

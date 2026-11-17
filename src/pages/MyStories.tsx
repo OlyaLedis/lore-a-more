@@ -1,6 +1,8 @@
 import { usePaginatedQuery } from 'convex/react'
 import { Link, useLocation } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
+import { useBackLink } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { RevisionBadge, StatusBadge } from '../components/StatusBadge'
 import { StoryActions } from '../components/StoryActions'
 import { formatDate } from '../format'
@@ -14,9 +16,11 @@ export default function MyStories() {
     {},
     { initialNumItems: 20 },
   )
+  const back = useBackLink({ to: '/account', label: 'Account' })
 
   return (
     <div>
+      <BackLink back={back} className="mb-3" />
       <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">My stories</h1>
       {submitted && (
         <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-amber-900">

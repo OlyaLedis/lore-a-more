@@ -7,6 +7,8 @@ import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
 import { byline, formatDate } from '../format'
 import { categoryLabel, SOURCE_KINDS, themeLabel } from '../../convex/taxonomy'
+import { useBackLink } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { StoryCover, type CardCover } from '../components/StoryCard'
 import { precisionNote } from '../location'
 
@@ -15,9 +17,11 @@ type Decision = 'approved' | 'rejected'
 export default function Review() {
   const stories = usePaginatedQuery(api.stories.pending, {}, { initialNumItems: 10 })
   const edits = usePaginatedQuery(api.stories.pendingRevisions, {}, { initialNumItems: 10 })
+  const back = useBackLink({ to: '/account', label: 'Account' })
 
   return (
     <div>
+      <BackLink back={back} className="mb-3" />
       <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">Review submissions</h1>
       <p className="mt-2 text-stone-500">
         Approved stories and edits go live right away.{' '}

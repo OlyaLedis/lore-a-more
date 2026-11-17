@@ -154,8 +154,8 @@ closes an open story first, then the place. Towns are centred on their Wikidata 
 (`placeCentre`), because MapTiler gives the middle of the whole area; it falls back to MapTiler's point.
 Arrow keys, Enter, and Escape work. `stories.mapped` returns an `excerpt` (the first 280 characters) for
 the story sheet. `BaseMap`'s `onMap` hands the Leaflet map to the page. `/write?place=…&lat=…&lng=…&spot=0|1` (`draftFromParams`) starts the
-form at that place. The new-story form shows "← Back" when there's a page before it in the tab (it goes
-back in history; sign-in replaces its own entry). The Map tab keeps its view in its history entry
+form at that place. The new-story form has the usual back link ("← Map"; sign-in replaces its own
+history entry, so it never counts as a step). The Map tab keeps its view in its history entry
 (`useRememberView`: `mapView` router state, saved on every move), so going back reopens the map where it
 was. In the
 story sheet, each part of the place line is a link (`PlaceTrail`): the first zooms to the story's pin,
@@ -228,12 +228,17 @@ only when the reader taps Use My Location. It never asks on load or after sign-i
 already allows it. `request()` returns the position or why it failed, and the position is rounded to about
 1 km. `stories.remove` also deletes a story's rows in these tables and in `collectionEntries`.
 
-**Back links.** The story page and the new-story form show a back arrow named for where the reader came
-from ("← Map", "← Search", "← Home"; "← Back" for other pages), and none when there's no page before it in
-the tab (opened from a shared link: the logo goes home). `src/backLink.ts`: `useRecordPages` (in `AppShell`)
-records each page by its place in the history (React Router's `idx`, in sessionStorage), `useBackLink` names
-the previous one and goes back. Reading mode's Close goes back when the story page is the page before, so
-the story's back link never leads into reading mode.
+**Back links.** Every page that isn't a tab (Home, Map, Library, Search, Account) starts with the same quiet back
+link (`BackLink` in `src/components/BackLink.tsx`), named for where it goes. `src/backLink.ts`: `useRecordPages` (in
+`AppShell`) records each page by its place in the history (React Router's `idx`, in sessionStorage); pages with a name
+of their own record it with `usePageName` (a story's title, an artist's name, "Stories in Eppstein" on Home with a
+place), others are named by address (`NAMES`), and long names are cut at a word (`shortLabel`). With a page before it in
+the tab, `useBackLink` goes back in history (so Home's scroll and the map's view return, and "See all" never loops).
+With none (a shared link opened directly; the installed app has no browser Back button), it goes to the page's parent
+(`fallback`): story → Home ("← Stories in X" with a place chosen), profile → Illustrators, Illustrators and New → Home,
+My stories and Review → Account, admin Illustrators → Review, one admin profile → admin Illustrators, the edit form → the
+story. Reading mode's Close goes back when the story page is the page before, so the story's back link never leads
+into reading mode. Sign In returns to `state.from` and has no back link.
 
 **Navigation.** `src/components/AppShell.tsx` holds the top bar (Add a Story, plus the initials avatar
 that links to `/account`) and the phone bottom bar (Home / Map / Library, plus a separate Search

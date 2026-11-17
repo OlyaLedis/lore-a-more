@@ -5,6 +5,8 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
+import { useBackLink } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { PageHeader } from '../components/PageHeader'
 import { StatusBadge } from '../components/StatusBadge'
 import { StoryCard } from '../components/StoryCard'
@@ -24,6 +26,7 @@ export function AdminIllustrators() {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const back = useBackLink({ to: '/review', label: 'Review' })
 
   const add = async (e: FormEvent) => {
     e.preventDefault()
@@ -40,6 +43,7 @@ export function AdminIllustrators() {
 
   return (
     <div>
+      <BackLink back={back} className="mb-3" />
       <PageHeader
         title="Illustrators"
         subtitle="Profiles and credits for the artists who draw the stories. Assign illustrators on each story's page."
@@ -125,6 +129,7 @@ function EditIllustrator({ illustrator }: { illustrator: Editing }) {
   const [links, setLinks] = useState(illustrator.links.join('\n'))
   const [status, setStatus] = useState<{ kind: 'saved' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const back = useBackLink({ to: '/admin/illustrators', label: 'Illustrators' })
 
   const save = async (e: FormEvent) => {
     e.preventDefault()
@@ -142,9 +147,7 @@ function EditIllustrator({ illustrator }: { illustrator: Editing }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link to="/admin/illustrators" className="text-sm text-stone-500 hover:text-stone-900">
-        ← Illustrators
-      </Link>
+      <BackLink back={back} />
       <div className="mt-4 flex items-end justify-between gap-4">
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">{illustrator.name}</h1>
         <Link to={illustratorPath(illustrator)} className="shrink-0 text-sm text-stone-500 underline-offset-4 hover:underline">

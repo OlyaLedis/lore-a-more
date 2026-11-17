@@ -1,15 +1,19 @@
 import { usePaginatedQuery } from 'convex/react'
 import { Link } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
+import { useBackLink } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { PageHeader } from '../components/PageHeader'
 import { StoryCard } from '../components/StoryCard'
 
 // "New": every published story, most recently published first.
 export default function Feed() {
   const { results, status, loadMore } = usePaginatedQuery(api.stories.list, {}, { initialNumItems: 12 })
+  const back = useBackLink({ to: '/', label: 'Home' })
 
   return (
     <div>
+      <BackLink back={back} className="mb-3" />
       <PageHeader title="New" subtitle="Recently published stories." />
       {status === 'LoadingFirstPage' ? (
         <p className="text-stone-500">Loading stories…</p>

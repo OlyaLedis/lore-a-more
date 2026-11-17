@@ -1,7 +1,9 @@
 import { useQuery } from 'convex/react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import { CATEGORIES, type StoryCategory } from '../../convex/taxonomy'
+import { useBackLink, usePageName } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { StoryCard } from '../components/StoryCard'
 import { distanceFrom, placeHeading, useSelectedPlace } from '../selectedPlace'
 
@@ -16,18 +18,20 @@ export default function PlaceAll() {
       ? { here: place.center, radiusKm: place.radiusKm, limit: 100, category: known?.value as StoryCategory | undefined }
       : 'skip',
   )
+  // Usually opened from Home's "See all", so this goes back there (keeping Home's scroll position)
+  // rather than adding Home again; opened directly, it goes to Home.
+  const back = useBackLink(place ? { to: '/', label: placeHeading(place) } : null)
+  const where = place ? placeHeading(place).replace(/^Stories /, '') : ''
+  usePageName(place ? (known ? `${known.label} ${where}` : `All stories ${where}`) : null)
 
   // Without a chosen place there's nothing to list; start from the beginning.
   if (!place) return <Navigate to="/" replace />
 
-  const where = placeHeading(place).replace(/^Stories /, '')
   const shown = stories
 
   return (
     <div>
-      <Link to="/" className="text-sm font-medium text-stone-600 hover:text-stone-900">
-        ← {placeHeading(place)}
-      </Link>
+      <BackLink back={back} />
       <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">
         {known ? `${known.label} ${where}` : `All stories ${where}`}
       </h1>

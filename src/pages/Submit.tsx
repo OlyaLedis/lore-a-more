@@ -17,8 +17,9 @@ import {
   type StoryTheme,
 } from '../../convex/taxonomy'
 import { CoverPicker } from '../components/CoverPicker'
-import { ArrowLeftIcon } from '../components/Icons'
+import { BackLink } from '../components/BackLink'
 import { useBackLink } from '../backLink'
+import { storyPath } from '../storyLinks'
 import { LocationField } from '../components/LocationField'
 import { ReadingView } from '../components/ReadingView'
 import { SceneEditor } from '../components/SceneEditor'
@@ -60,7 +61,7 @@ export default function Submit() {
   // A place chosen on the map ("Add a story" in the map search) starts the form with that location.
   const [params] = useSearchParams()
   const [startPlace] = useState(() => draftFromParams(params))
-  const back = useBackLink()
+  const back = useBackLink({ to: '/', label: 'Home' })
   return (
     <StoryForm
       heading="Add a Story"
@@ -88,6 +89,8 @@ export function EditStory() {
   const story = useQuery(api.stories.editable, { id })
   const update = useMutation(api.stories.update)
   const navigate = useNavigate()
+  // Back where the form was opened from (usually the story or My stories); opened directly, to the story.
+  const back = useBackLink(story ? { to: storyPath(story), label: story.title } : { to: '/mine', label: 'My stories' })
 
   if (story === undefined) return <p className="text-stone-500">Loading…</p>
   if (story === null) {
@@ -146,7 +149,8 @@ export function EditStory() {
         themes,
         source: story.source,
       }}
-      onCancel={() => navigate(-1)}
+      back={back}
+      onCancel={() => back?.go()}
       onSave={async (values) => {
         await update({ id: story._id, ...values })
         navigate('/mine', { state: { submitted: true, edited: true } })
@@ -231,16 +235,7 @@ function StoryForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-7">
       <div>
-        {back && (
-          <button
-            type="button"
-            onClick={back.go}
-            className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900"
-          >
-            <ArrowLeftIcon className="h-4 w-4" />
-            {back.label}
-          </button>
-        )}
+        <BackLink back={back ?? null} className="mb-3" />
         <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">{heading}</h1>
         <p className="mt-2 text-stone-500">{intro}</p>
       </div>

@@ -11,8 +11,9 @@ import { Lightbox, type Picture } from '../components/Lightbox'
 import { ReaderActions, SeasonalToggle } from '../components/ReaderActions'
 import { StoryTags } from '../components/StoryCard'
 import { TypePhrase } from '../components/StoryType'
-import { ArrowLeftIcon } from '../components/Icons'
-import { useBackLink } from '../backLink'
+import { BackLink } from '../components/BackLink'
+import { useBackLink, usePageName } from '../backLink'
+import { placeHeading, useSelectedPlace } from '../selectedPlace'
 import { PlaceTrail } from '../components/PlaceTrail'
 import { RevisionBadge, StatusBadge } from '../components/StatusBadge'
 import { StoryActions } from '../components/StoryActions'
@@ -34,7 +35,11 @@ export default function StoryPage() {
   const me = useQuery(api.users.me)
   const navigate = useNavigate()
   const [enlarged, setEnlarged] = useState<Picture | null>(null)
-  const back = useBackLink()
+  // Opened from a shared link, there's no page before it: the way back is Home (the chosen place's
+  // stories, if there is one).
+  const { place } = useSelectedPlace()
+  const back = useBackLink({ to: '/', label: place ? placeHeading(place) : 'Home' })
+  usePageName(story?.title)
   useRecordView(story)
   // The story's place in the strip above the header.
   usePlaceStatus(story?.location ? { ...story.location, label: story.location.place?.split(',')[0] } : null)
@@ -54,13 +59,8 @@ export default function StoryPage() {
 
   return (
     <article>
-      {/* Back where the reader came from, by name ("← Map"); none when the story was opened directly. */}
-      {back && (
-        <button type="button" onClick={back.go} className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900">
-          <ArrowLeftIcon className="h-4 w-4" />
-          {back.label}
-        </button>
-      )}
+      {/* Back where the reader came from, by name ("← Map", "← Kwame Asante-Lind"). */}
+      <BackLink back={back} />
       {mine && (
         <div className="mt-4 space-y-3 rounded-lg border border-stone-200 bg-white p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

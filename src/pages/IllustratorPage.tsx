@@ -4,6 +4,8 @@ import { useRef, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import coverTexture from '../assets/cover-texture.png'
+import { useBackLink, usePageName } from '../backLink'
+import { BackLink } from '../components/BackLink'
 import { IllustratorCard } from '../components/IllustratorCard'
 import { PinIcon } from '../components/Icons'
 import { PlacesBanner } from '../components/PlacesBanner'
@@ -15,6 +17,9 @@ import { coverTint, linkName, usePageMeta } from '../illustrators'
 export default function IllustratorPage() {
   const { slug = '' } = useParams()
   const profile = useQuery(api.illustrators.profile, { slug })
+  // Back to where the reader came from (often a story); opened from a shared link, to the directory.
+  const back = useBackLink({ to: '/illustrators', label: 'Illustrators' })
+  usePageName(profile?.name)
   usePageMeta(
     profile
       ? {
@@ -50,6 +55,7 @@ export default function IllustratorPage() {
           its lower edge sits a little in from its left edge at every width. Below the portrait: the name,
           the page's main focus, and one quiet line of profile details, "Illustrator · Based in …" (where
           the artist lives, never where their stories happen; those are the dots on the banner). */}
+      <BackLink back={back} className="mb-3" />
       <header>
         <PlacesBanner
           image={banner}

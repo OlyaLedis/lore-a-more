@@ -10,6 +10,7 @@ import { WelcomeLogo } from '../components/WelcomeLogo'
 import { CardRow, FeaturedStoryCard, Section, StoryCard } from '../components/StoryCard'
 import { placeNameAt } from '../geocoding'
 import { useHere } from '../here'
+import { usePageName } from '../backLink'
 import { usePlaceStatus } from '../mapStatus'
 import { distanceFrom, placeHeading, useSelectedPlace, type SelectedPlace } from '../selectedPlace'
 
@@ -25,6 +26,8 @@ const PER_SECTION = 4
 // Home starts by asking where to discover stories; story cards appear only once a place is chosen.
 export default function Home() {
   const { place } = useSelectedPlace()
+  // What a back link to here says: "← Stories in Eppstein", or "← Home" on the opening screen.
+  usePageName(place ? placeHeading(place) : 'Home')
   return place ? <PlaceStories place={place} /> : <DiscoverStart />
 }
 
