@@ -19,6 +19,8 @@ npm run lint                   # oxlint
 npm test                       # vitest + convex-test, runs convex/*.test.ts against an in-memory backend
 
 npx convex run users:setAdmin '{"email":"..."}'   # grant review rights ("isAdmin":false to revoke)
+npx convex run legends:clearScenePictures '{"importId":"legend-96","sceneId":"s1"}'   # take a legend scene's pictures off
+npx convex run stories:fixDetails '{"code":"SP-…","category":"wonder_tale"}'   # fix a story's location/category/themes, no review
 npx convex env list            # auth needs JWT_PRIVATE_KEY, JWKS, SITE_URL on each deployment
 npx convex data <table>        # inspect a table
 ```
@@ -79,7 +81,7 @@ replaced pending edit, a direct edit, or a delete are removed from storage (`del
 uploaded but never submitted are not cleaned up yet. Reading mode is `/story/:id/read`
 (`src/components/ReadingView.tsx`): auto-scroll stops at each picture and on any manual scroll, there's
 no auto-scroll under reduced motion, and the position is an anchor like `s2:3` saved to
-`readingPositions` (signed in) and localStorage. A story opens with its first picture, above the first paragraph; the rest follow their scene's text. Pictures are multiplied onto ivory paper (`bg-paper`, #F7F2E7, the `--color-paper` theme colour in `index.css`; `multiply`, off in dark reading mode), so their white paper turns ivory with no visible edge. The light reading page is all paper; on the story page each picture sits on a paper panel. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
+`readingPositions` (signed in) and localStorage. A story opens with its first picture, above the first paragraph; the rest follow their scene's text. Pictures are multiplied onto the page (`multiply`, off in dark reading mode), so their white paper takes the page's colour with no visible edge. The light reading page is white. The ivory paper colour (`bg-paper`, #F7F2E7) is only for card covers, never inside a story. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
 at least 1.4 times as wide as tall, which would be 1.4 times wider than the column at its panorama
 height (at most 1.1 times the column's width), is shown tall and scrolls sideways, with faded edges, a
 "Swipe to look around" hint on touch screens, and arrow buttons where there's a mouse. Decided from the
@@ -252,7 +254,7 @@ and never changed; `storyCodes:backfill` gives older stories one). Links are `/s
 story page replaces the address with the current one. Always build story links with `storyPath`, never
 from `_id`. A story's `source` can have a `url` (http/https only), shown as "Read the source".
 
-**Curated legends.** `src/data/europeanLegends.ts` holds 117 real place-bound legends. Each has a
+**Curated legends.** `src/data/europeanLegends.ts` holds 118 real place-bound legends. Each has a
 `source` record (title, URL, author or institution, date, source type, the place as the source names
 it, and confidence), up to 3 `themes`, and an `ageRange`. Prefer archives and published collections
 over Wikipedia, which is for discovery only; the file's header lists the order. Coordinates come from
@@ -266,8 +268,8 @@ text (`legends:setPicture`, replacing an earlier one; `"use": "cover"` or `"illu
 can have a cover of its own, which re-imports keep). `node scripts/export-legend-pictures.ts <folder>` saves the dev
 deployment's legend pictures and a matching `pictures.json` (via `legends:pictureList`), to copy them to production
 with `legend-pictures.ts --prod` after `import-legends --prod`. The files and list stay outside the repo; the
-Rhine–Main legends 93, 94, 96, 97, 104, 108, 114, and 117 have FPO placeholder pictures (from a printed book; 104 a drawing)
-on dev and production, credited as such, to be replaced before going public; 95, 98, and 115 have the final
+Rhine–Main legends 93, 94, 97, 104, 108, 114, and 117 have FPO placeholder pictures (from a printed book; 104 a drawing)
+on dev and production, credited as such, to be replaced before going public; 95, 96, 98, and 115 have the final
 illustrations (no credit). `node scripts/import-story-folders.ts <folder> [--prod]` loads full stories from story folders
 (`093-giant-of-eppstein/story.md` and `images/`, kept out of the repo) onto the legends with the same number: only the
 `## Older` version for now, skipping pictures marked `PLACEHOLDER`. `import-legends` never replaces a story's several scenes

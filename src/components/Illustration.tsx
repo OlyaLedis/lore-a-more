@@ -40,8 +40,8 @@ export function Illustration({
   onOpen: () => void
   // Reading mode's ring around the picture it stopped at.
   highlight?: boolean
-  // Multiplies the picture onto ivory paper (`bg-paper`), so its white paper turns ivory and leaves no
-  // visible edge. Off on a dark page, where it would turn the picture nearly black.
+  // Multiplies the picture onto the page, so its white paper takes the page's colour and leaves no visible
+  // edge. Off on a dark page, where it would turn the picture nearly black.
   multiply?: boolean
   // For the button around the picture (its focus ring).
   className?: string
@@ -144,7 +144,7 @@ export function Illustration({
           type="button"
           onClick={onOpen}
           aria-label={`View larger: ${picture.alt}`}
-          className={`block w-full overflow-hidden rounded-2xl ${multiply ? 'bg-paper' : ''} ${className}`}
+          className={`block w-full overflow-hidden rounded-2xl ${className}`}
         >
           {image}
         </button>
@@ -159,7 +159,7 @@ export function Illustration({
   })`
 
   return (
-    <div ref={box} className={`relative rounded-2xl ${multiply ? 'bg-paper' : ''} ${highlight ? RING : ''}`}>
+    <div ref={box} className={`relative ${highlight ? RING : ''}`}>
       <div
         ref={scroller}
         onScroll={updateEnds}

@@ -141,6 +141,25 @@ export const setPicture = internalMutation({
   },
 });
 
+// Removes all pictures from one scene of a legend (e.g. an FPO placeholder), and their files unless the
+// cover still uses them. Re-imports keep a scene's pictures, so this is the way to take one off.
+export const clearScenePictures = internalMutation({
+  args: { importId: v.string(), sceneId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { importId, sceneId }) => {
+    const story = await ctx.db.query("stories").withIndex("by_importId", (q) => q.eq("importId", importId)).unique();
+    if (!story) throw new ConvexError(`No story ${importId}.`);
+    const scenes = scenesOf(story);
+    const scene = scenes.find((s) => s.id === sceneId);
+    if (!scene) throw new ConvexError(`${importId} has no scene ${sceneId}.`);
+    const before = filesOf(story);
+    const cleared = scenes.map((s) => (s.id === sceneId ? { ...s, illustrations: [] } : s));
+    await ctx.db.patch("stories", story._id, { scenes: cleared });
+    await deleteUnusedFiles(ctx, before, filesOf({ scenes: cleared, cover: story.cover }));
+    return scene.illustrations.length;
+  },
+});
+
 // The legends' pictures with download links, to copy them to another deployment
 // (scripts/export-legend-pictures.ts): each legend's cover and the illustration after its text, as
 // setPicture puts them.

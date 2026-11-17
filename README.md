@@ -198,7 +198,7 @@ You need **two** Terminal tabs running at the same time, both in the `olga` fold
 | 2 | `npm run dev` | Serves the website at **http://localhost:5173** |
 
 Open [http://localhost:5173](http://localhost:5173). The feed will be empty, since your development
-database starts fresh. To fill it with the 117 place-bound legends (each with its own page, code,
+database starts fresh. To fill it with the 118 place-bound legends (each with its own page, code,
 and source), run once:
 
 ```sh

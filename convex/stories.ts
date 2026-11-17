@@ -471,3 +471,33 @@ export const backfillSearchText = internalMutation({
     return { updated, isDone };
   },
 });
+
+// Fixes a story's place, type, or topics by its code, without the review step: for corrections an
+// admin asks for from the command line, such as a test story pinned in the wrong country.
+//   npx convex run stories:fixDetails '{"code":"SP-8S8AEM","category":"wonder_tale"}'
+// Only the fields given change. A pending revision of the story is left alone.
+export const fixDetails = internalMutation({
+  args: {
+    code: v.string(),
+    location: v.optional(storyLocation),
+    category: v.optional(storyCategory),
+    themes: v.optional(v.array(storyTheme)),
+  },
+  returns: v.null(),
+  handler: async (ctx, { code, location, category, themes }) => {
+    const story = await ctx.db
+      .query("stories")
+      .withIndex("by_code", (q) => q.eq("code", code.toUpperCase()))
+      .unique();
+    if (!story) throw new ConvexError(`No story ${code}.`);
+    if (location && !isValidLatLng(location)) throw new ConvexError("That position isn't on the map.");
+    if (themes && themes.length > MAX_THEMES) throw new ConvexError(`At most ${MAX_THEMES} topics.`);
+    const changes = {
+      ...(location && { location }),
+      ...(category && { category }),
+      ...(themes && { themes }),
+    };
+    await ctx.db.patch("stories", story._id, { ...changes, searchText: searchTextFor({ ...story, ...changes }) });
+    return null;
+  },
+});
