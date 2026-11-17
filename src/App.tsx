@@ -3,6 +3,9 @@ import { Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { RequireAdmin, RequireAuth } from './components/RequireAuth'
 import Account from './pages/Account'
+import { AdminIllustrator, AdminIllustrators } from './pages/AdminIllustrators'
+import IllustratorPage from './pages/IllustratorPage'
+import IllustratorsPage from './pages/IllustratorsPage'
 import Feed from './pages/Feed'
 import Home from './pages/Home'
 import Library from './pages/Library'
@@ -86,6 +89,30 @@ export default function App() {
                 <Narrow>
                   <Review />
                 </Narrow>
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route path="/illustrator/:slug" element={<IllustratorPage />} />
+        <Route path="/illustrators" element={<IllustratorsPage />} />
+        <Route
+          path="/admin/illustrators"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <Narrow>
+                  <AdminIllustrators />
+                </Narrow>
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/illustrators/:id"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <AdminIllustrator />
               </RequireAdmin>
             </RequireAuth>
           }

@@ -29,23 +29,12 @@ export type CardStory = {
 // A cover picture as cards show it. `scale` and `x`/`y` are display settings, never a crop.
 export type CardCover = { url: string; scale: number; x: number; y: number }
 
-// The age symbol below each cover: a colorful shape showing only "6+", "8+", or "10+".
-const ageColors: Record<AgeRange, string> = {
-  '6+': 'bg-emerald-700',
-  '8+': 'bg-sky-700',
-  '10+': 'bg-violet-700',
-}
-
+// Who a story suits, as quiet text: "Ages 8+". Neutral, with no coloured badge, so it's easy to find
+// without competing with the picture and title.
 export function AgeSymbol({ age, large = false }: { age: AgeRange; large?: boolean }) {
   return (
-    <span
-      role="img"
-      aria-label={`For ${age.replace('+', '')} and up`}
-      className={`inline-flex shrink-0 items-center justify-center rounded-[0.8rem_0.8rem_0.8rem_0.25rem] font-extrabold tabular-nums text-white ${
-        ageColors[age]
-      } ${large ? 'h-8 min-w-11 px-2.5 text-base' : 'h-6 min-w-9 px-2 text-[13px]'}`}
-    >
-      {age}
+    <span className={`shrink-0 whitespace-nowrap font-medium tabular-nums text-stone-500 ${large ? 'text-[15px]' : 'text-[13px]'}`}>
+      Ages {age}
     </span>
   )
 }
@@ -146,15 +135,17 @@ export function StoryCardBody({ story, note }: { story: CardStory; note?: string
       <p className="mt-3 line-clamp-2 h-[2.6em] font-serif text-[17px] font-semibold leading-[1.3] text-stone-900 group-hover:underline sm:text-lg">
         {story.title}
       </p>
-      <div className="mt-1.5 flex h-6 items-center gap-2">
-        {story.ageRange && <AgeSymbol age={story.ageRange} />}
+      {/* Where it happens, then who it suits, on lines of their own: two kinds of information, never one badge.
+          Each line keeps its height when empty, so cards in a row stay aligned. */}
+      <p className="mt-1 flex h-5 min-w-0 items-center gap-1 text-[13px] text-stone-600">
         {story.place && (
-          <span className="flex min-w-0 items-center gap-1 text-[13px] text-stone-500">
-            <PinIcon className="h-3.5 w-3.5 shrink-0" />
+          <>
+            <PinIcon className="h-3.5 w-3.5 shrink-0 text-stone-400" />
             <span className="truncate">{shortPlace(story.place)}</span>
-          </span>
+          </>
         )}
-      </div>
+      </p>
+      <p className="flex h-5 items-center">{story.ageRange && <AgeSymbol age={story.ageRange} />}</p>
       {note && <p className="mt-1 h-5 truncate text-[13px] font-medium leading-5 text-orange-700">{note}</p>}
     </>
   )
@@ -195,15 +186,17 @@ export function FeaturedStoryCard({ story, note }: { story: CardStory; note?: st
         <p className="mt-1 line-clamp-3 font-serif text-[1.75rem] font-bold leading-tight text-stone-900 group-hover:underline sm:text-4xl">
           {story.title}
         </p>
-        <div className="mt-3 flex items-center gap-3">
-          {story.ageRange && <AgeSymbol age={story.ageRange} large />}
-          {story.place && (
-            <span className="flex min-w-0 items-center gap-1.5 text-stone-600">
-              <PinIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{story.place}</span>
-            </span>
-          )}
-        </div>
+        {story.place && (
+          <p className="mt-3 flex min-w-0 items-center gap-1.5 text-stone-600">
+            <PinIcon className="h-4 w-4 shrink-0 text-stone-400" />
+            <span className="truncate">{story.place}</span>
+          </p>
+        )}
+        {story.ageRange && (
+          <p className="mt-1">
+            <AgeSymbol age={story.ageRange} large />
+          </p>
+        )}
         <span className="mt-5 inline-flex rounded-full bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white group-hover:bg-stone-700">
           Read the story
         </span>

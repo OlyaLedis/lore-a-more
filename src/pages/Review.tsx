@@ -19,7 +19,12 @@ export default function Review() {
   return (
     <div>
       <h1 className="text-2xl font-semibold leading-tight tracking-tight text-stone-700 sm:text-3xl">Review submissions</h1>
-      <p className="mt-2 text-stone-500">Approved stories and edits go live right away.</p>
+      <p className="mt-2 text-stone-500">
+        Approved stories and edits go live right away.{' '}
+        <Link to="/admin/illustrators" className="underline underline-offset-4 hover:text-stone-900">
+          Manage illustrators
+        </Link>
+      </p>
 
       <h2 className="mt-8 text-lg font-semibold">New stories</h2>
       <Queue query={stories} empty="No new stories waiting.">

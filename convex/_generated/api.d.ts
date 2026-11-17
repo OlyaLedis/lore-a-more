@@ -14,6 +14,7 @@ import type * as covers from "../covers.js";
 import type * as discover from "../discover.js";
 import type * as geo from "../geo.js";
 import type * as http from "../http.js";
+import type * as illustrators from "../illustrators.js";
 import type * as legends from "../legends.js";
 import type * as library from "../library.js";
 import type * as scenes from "../scenes.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   discover: typeof discover;
   geo: typeof geo;
   http: typeof http;
+  illustrators: typeof illustrators;
   legends: typeof legends;
   library: typeof library;
   scenes: typeof scenes;

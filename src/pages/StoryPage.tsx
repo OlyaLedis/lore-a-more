@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
 import { CharacterCards } from '../components/CharacterCard'
+import { IllustratorCredit } from '../components/IllustratorCredit'
+import { IllustratorPicker } from '../components/IllustratorPicker'
 import { Illustration } from '../components/Illustration'
 import { Lightbox, type Picture } from '../components/Lightbox'
 import { ReaderActions, SeasonalToggle } from '../components/ReaderActions'
@@ -29,6 +31,7 @@ export default function StoryPage() {
   const story = useQuery(api.stories.get, { id })
   // Non-null only for the story's author.
   const mine = useQuery(api.stories.editable, { id })
+  const me = useQuery(api.users.me)
   const navigate = useNavigate()
   const [enlarged, setEnlarged] = useState<Picture | null>(null)
   const back = useBackLink()
@@ -115,9 +118,11 @@ export default function StoryPage() {
           )}
         </p>
       )}
+      <IllustratorCredit storyId={story._id} className="mt-1 text-stone-500" />
       <div className="mt-4">
         <StoryTags story={story} />
       </div>
+      {me?.isAdmin && <IllustratorPicker storyId={story._id} />}
       <Link
         to={readPath(story)}
         className="mt-6 inline-flex items-center gap-2 rounded-full bg-stone-900 px-6 py-3 text-lg font-semibold text-white hover:bg-stone-700"

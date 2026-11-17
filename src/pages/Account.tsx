@@ -54,6 +54,11 @@ export default function Account() {
             Review submissions <span aria-hidden>›</span>
           </Link>
         )}
+        {me.isAdmin && (
+          <Link to="/admin/illustrators" className={row}>
+            Illustrators <span aria-hidden>›</span>
+          </Link>
+        )}
         <Link to="/map" className={row}>
           Story map <span aria-hidden>›</span>
         </Link>

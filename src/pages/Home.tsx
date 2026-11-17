@@ -86,7 +86,7 @@ function DiscoverStart() {
       <h1 className="mb-8 font-serif text-[1.42rem] font-normal italic leading-tight text-orange-700 sm:mb-6 sm:text-6xl">
         Discover Local Stories
       </h1>
-      <img src={logo} alt="Loramore" className="h-[10.5rem] w-auto sm:h-52" />
+      <img src={logo} alt="Lore-a-More" className="h-[10.5rem] w-auto sm:h-52" />
       <div className="mt-12 w-[92%] max-w-lg text-left">
         <PlaceFinder onFind={onFind} onNoPlace={onNoPlace} describedBy={statusId} />
       </div>

@@ -63,6 +63,7 @@ export default function ReadPage() {
     <ReadingView
       title={story.title}
       author={story.author}
+      storyId={story._id}
       scenes={story.scenes}
       // The account's saved place wins; otherwise this browser's.
       initialAnchor={saved ?? localPosition(story._id)}

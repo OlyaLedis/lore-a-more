@@ -54,8 +54,10 @@ stories, which show them without a search link and get a neutral map dot, and th
 author to choose again (never mapped by guess). New stories and edits require `category`, `ageRange`, and `source`, and
 can have up to 3 `themes` (19 topics such as Dragons & serpents, Saints & miracles, Funny). All four are listed in `convex/taxonomy.ts`, which the frontend imports too. The first theme list (sea, forest, adventure, mystery, family) is retired: `legacyTheme` keeps it valid on saved stories, where it still shows and filters, but new stories and edits can't choose it, and the edit form asks the author to pick current topics instead of mapping old ones.
 They're optional in the schema, and older stories keep `undefined`. Never fill them in with guesses:
-the edit form asks the author instead. Home has two states. With no place chosen it shows only the large hand-lettered logo (`src/assets/logo.svg`, traced from the
-drawing; the header shows only its boot-shaped "L", `src/assets/logo-mark.svg`, the same drawing cropped, and hides it on this screen), a centred "Discover Local Stories" heading above it (quiet orange serif italic),
+the edit form asks the author instead. Home has two states. With no place chosen it shows only the large hand-lettered logo (`src/assets/logo.svg`, the final
+professional vector, used exactly as delivered: never redrawn, recoloured, filtered, or squeezed; it's the only place the full
+logo appears; the header shows only the boot-shaped "L", `src/assets/logo-mark.svg`, cropped from the earlier traced drawing,
+and hides it on this screen), a centred "Discover Local Stories" heading above it (quiet orange serif italic),
 a `PlaceFinder` search field, and Use My Location; there are no story cards, and signed-out visitors see
 just the logo and Sign In (`useOpeningScreen` in `AppShell`). Choosing a place (search) or Use My
 Location (device) sets the `SelectedPlace` (`src/selectedPlace.ts`, kept in `sessionStorage` for the tab so
@@ -81,7 +83,7 @@ replaced pending edit, a direct edit, or a delete are removed from storage (`del
 uploaded but never submitted are not cleaned up yet. Reading mode is `/story/:id/read`
 (`src/components/ReadingView.tsx`): auto-scroll stops at each picture and on any manual scroll, there's
 no auto-scroll under reduced motion, and the position is an anchor like `s2:3` saved to
-`readingPositions` (signed in) and localStorage. A story always begins with text: its first picture comes right after the first paragraph. Two pictures never follow each other: `layoutScene` (`src/sceneLayout.ts`, story page and reading mode) spreads a scene's pictures through its paragraphs, the last after the last paragraph, dividing a paragraph between sentences when there are more pictures than paragraphs; pictures meet only when a scene runs out of sentences. A scene of only pictures (the importer's overflow past 4 per scene) joins the scene before it (`joinPictureOnlyScenes`). A scene with pictures ends with one, so the ✦ between scenes shows only where text meets text. Pictures are multiplied onto the page (`multiply`, off in dark reading mode), so their white paper takes the page's colour with no visible edge. The light reading page is white. The ivory paper colour (`bg-paper`, #F7F2E7) is only for card covers, never inside a story. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
+`readingPositions` (signed in) and localStorage. Pictures have no visible caption (their description is the alt text); only a credit shows, as "Illustration: …". A story always begins with text: its first picture comes right after the first paragraph. Two pictures never follow each other: `layoutScene` (`src/sceneLayout.ts`, story page and reading mode) spreads a scene's pictures through its paragraphs, the last after the last paragraph, dividing a paragraph between sentences when there are more pictures than paragraphs; pictures meet only when a scene runs out of sentences. A scene of only pictures (the importer's overflow past 4 per scene) joins the scene before it (`joinPictureOnlyScenes`). A scene with pictures ends with one, so the ✦ between scenes shows only where text meets text. Pictures are multiplied onto the page (`multiply`, off in dark reading mode), so their white paper takes the page's colour with no visible edge. The light reading page is white. The ivory paper colour (`bg-paper`, #F7F2E7) is only for card covers, never inside a story. Wide pictures are panoramas (`src/components/Illustration.tsx`, story page and reading mode): a picture
 at least 1.4 times as wide as tall, which would be 1.4 times wider than the column at its panorama
 height (at most 1.1 times the column's width), is shown tall and scrolls sideways, with faded edges, a
 "Swipe to look around" hint on touch screens, and arrow buttons where there's a mouse. Decided from the
@@ -209,8 +211,8 @@ note each have a fixed height so rows align; the story page shows the full title
 **Home layout.** Top Picks shows one `FeaturedStoryCard`. Recently Played, Places You've Been, Seasonal,
 and search results use `CardRow` / `Shelf` rows of small cards. Categories use `TwoCardGrid`. Rows sit
 inside the page gutter with no negative margins, so snapping starts at the same left edge as the headings.
-Under each cover: the title (two lines), the `AgeSymbol` (only "6+" / "8+" / "10+" is visible), and a short
-one-line place. There's no category text, because the cover color already shows it.
+Under each cover: the title (two lines), then a short one-line place with the pin, then "Ages 8+" (`AgeSymbol`:
+quiet neutral text, no badge) on its own line, so place and age never read as one thing. There's no category text, because the cover color already shows it.
 
 **Reader history is private.** `savedStories` / `storyViews` / `placeVisits` are only read for
 `getAuthUserId(ctx)`. "Places You've Been" comes only from Mark as visited, or from opening or saving a
@@ -284,6 +286,25 @@ favicon shows the boot larger.
 `node scripts/felt-export.ts <site URL> [--prod]` writes a GeoJSON file for Felt
 with a `link` to each story. Hosting: Vercel builds with `npx convex deploy --cmd 'npm run build'`
 (`vercel.json`); README section 11 has the production setup.
+
+**Illustrators.** `illustrators` (name required; `photo` (the round portrait), `cover` (the banner), `bio`, `basedIn` (where the artist lives, never their stories' places), `website`, up to 8 `links`) and `storyIllustrators`
+(story ↔ illustrator, with credit `order`; a story can have up to 6) in `convex/illustrators.ts`. Each profile has a public page at
+`/illustrator/<slug>` (`IllustratorPage`): a textured banner (their `cover`, or else the shared watercolour `src/assets/cover-texture.png` tinted by `coverTint`, one of 8 shades picked from the slug), with a dot at each place their published stories happen (`PlacesBanner`, laid out by `src/placesMap.ts`: fitted to the stories, named by town when close and by country when spread across countries or continents, joined across the Pacific, overlapping dots merged with no counts, clear of the portrait; a dot opens its story, or several stories on the Map tab via `dotLink`), reaching past the page margins so the round portrait overlapping it sits inset, then the name (the main focus) and one quiet line, italic "Illustrator · Based in …"; below, underlined About | Stories tabs (`ProfileTabs`, kept in the address as #about / #stories) with About holding the bio (larger serif, line-height 1.45), "Based in", the `website` as a dark "See portfolio" button and
+other links as small text (all opening in a new tab, named by site via `linkName`), and Stories a gallery of their published
+stories built from the links, so it updates when a story is assigned. "More Illustrators" (up to six, a sideways-scrolling row
+on phones) and "View all illustrators" (to `/illustrators`) close the page. Stories are one column below 600px, two to
+1024px, three above. The slug comes from the name when the profile is made and never changes. `nameKey` (lower-case name) stops
+duplicates. Stories show "Illustrated by …" (`IllustratorCredit`) under the place line and in reading mode, linking to the
+profile; nothing shows without an illustrator. This is separate from a picture's `credit` (FPO attributions). Admins manage
+profiles at `/admin/illustrators` (linked from Review and Account) and assign illustrators on the story page
+(`IllustratorPicker`, admins only). Deleting a story removes its links. Readers discover only illustrators with at least one published story
+(`published` in `convex/illustrators.ts`): the public directory `/illustrators` (`IllustratorsPage`, not in the main
+navigation), "More Illustrators" at the bottom of each profile (`others`: the next six in name order, going
+round, never the one shown, then "View all illustrators"), and Search, which shows illustrators
+whose name matches (`illustrators.search`) and links to the directory. Link previews: `vercel.json` sends
+`/illustrator/:slug` to `api/illustrator.ts`, a Vercel function that reads the profile from Convex (its URL is in
+`index.html`'s `convex-url` meta, filled in by Vite) and returns the app page with the artist's title and `og:` tags;
+`usePageMeta` sets the same in the browser.
 
 **Story locations.** `stories.location` is optional: `{ lat, lng, place?, precision? }`. `precision`
 is `"exact" | "area" | "uncertain"`. It's optional in the schema because older stories don't have it,

@@ -228,4 +228,34 @@ export default defineSchema({
   })
     .index("by_characterId", ["characterId"])
     .index("by_storyId", ["storyId"]),
+
+  // An artist who illustrates stories, with a public profile at /illustrator/<slug> that works as a small
+  // portfolio. Managed by admins (convex/illustrators.ts); only the name is required.
+  illustrators: defineTable({
+    // In the profile's link; set from the name when the profile is made and never changed, so shared links last.
+    slug: v.string(),
+    name: v.string(),
+    // The name in lower case, so the same artist isn't added twice.
+    nameKey: v.string(),
+    photo: v.optional(v.id("_storage")),
+    // The banner at the top of their page; without one, the page shows their stories' pictures there.
+    cover: v.optional(v.id("_storage")),
+    bio: v.optional(v.string()),
+    // Where the artist lives ("Helsinki, Finland"), shown as "Based in …". Not where their stories happen.
+    basedIn: v.optional(v.string()),
+    website: v.optional(v.string()),
+    // Instagram, Behance, LinkedIn, and so on (https links, at most 8).
+    links: v.array(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_nameKey", ["nameKey"]),
+
+  // Who illustrated a story, in credit order. A story can have several illustrators.
+  storyIllustrators: defineTable({
+    storyId: v.id("stories"),
+    illustratorId: v.id("illustrators"),
+    order: v.number(),
+  })
+    .index("by_storyId", ["storyId"])
+    .index("by_illustratorId", ["illustratorId"]),
 });

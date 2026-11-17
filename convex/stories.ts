@@ -142,7 +142,13 @@ async function deleteByStory(
   ctx: MutationCtx,
   table: Extract<
     TableNames,
-    "savedStories" | "storyViews" | "placeVisits" | "collectionEntries" | "readingPositions" | "characterStories"
+    | "savedStories"
+    | "storyViews"
+    | "placeVisits"
+    | "collectionEntries"
+    | "readingPositions"
+    | "characterStories"
+    | "storyIllustrators"
   >,
   storyId: Id<"stories">,
 ) {
@@ -357,6 +363,7 @@ export const remove = mutation({
     await deleteByStory(ctx, "placeVisits", id);
     await deleteByStory(ctx, "collectionEntries", id);
     await deleteByStory(ctx, "characterStories", id);
+    await deleteByStory(ctx, "storyIllustrators", id);
     await ctx.db.delete(id);
   },
 });

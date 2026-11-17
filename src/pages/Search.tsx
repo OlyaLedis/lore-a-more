@@ -1,6 +1,6 @@
 import { useQuery } from 'convex/react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import {
   AGE_RANGES,
@@ -11,6 +11,7 @@ import {
   type StoredTheme,
   type StoryCategory,
 } from '../../convex/taxonomy'
+import { IllustratorCard } from '../components/IllustratorCard'
 import { SearchIcon } from '../components/Icons'
 import { PageHeader } from '../components/PageHeader'
 import { StoryCard } from '../components/StoryCard'
@@ -43,6 +44,11 @@ export default function Search() {
     ageRange: age,
     theme,
   })
+
+  const words = debounced.trim()
+  const illustrators = useQuery(api.illustrators.search, words ? { text: words } : 'skip')
+  // Looking for the artists themselves ("illustrators", "artist"): offer the directory.
+  const wantsDirectory = /illustrat|artist|drawing/i.test(words)
 
   function setFilter(key: 'category' | 'age' | 'theme', value: string | undefined) {
     setParams(
@@ -112,6 +118,28 @@ export default function Search() {
           ))}
         </FilterRow>
       </div>
+
+      {(wantsDirectory || (illustrators && illustrators.length > 0)) && (
+        <section aria-labelledby="illustrator-results" className="mt-8">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 id="illustrator-results" className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+              Illustrators
+            </h2>
+            <Link to="/illustrators" className="text-sm text-stone-500 underline-offset-4 hover:text-stone-900 hover:underline">
+              View all illustrators →
+            </Link>
+          </div>
+          {illustrators && illustrators.length > 0 && (
+            <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6">
+              {illustrators.map((illustrator) => (
+                <li key={illustrator._id}>
+                  <IllustratorCard illustrator={illustrator} small />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section aria-live="polite" className="mt-8">
         {results === undefined ? (

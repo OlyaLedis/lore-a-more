@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { Id } from '../../convex/_generated/dataModel'
 import { byline } from '../format'
 import { CloseIcon } from './Icons'
 import { joinPictureOnlyScenes, layoutScene } from '../sceneLayout'
 import { Illustration } from './Illustration'
+import { IllustratorCredit } from './IllustratorCredit'
 import { Lightbox, type Picture } from './Lightbox'
 
 export type ReadingScene = {
@@ -63,6 +65,7 @@ function usePrefersReducedMotion() {
 export function ReadingView({
   title,
   author,
+  storyId,
   scenes,
   initialAnchor,
   onPosition,
@@ -71,6 +74,8 @@ export function ReadingView({
 }: {
   title: string
   author?: string
+  // For the "Illustrated by" line under the title.
+  storyId?: Id<'stories'>
   scenes: ReadingScene[]
   // Where to start, from a saved position. Ignored if that point no longer exists.
   initialAnchor?: string | null
@@ -372,6 +377,7 @@ export function ReadingView({
         <div className="mx-auto max-w-3xl px-6 pb-[60vh] pt-[18vh] sm:px-10">
           <h1 className="font-serif text-4xl font-bold leading-tight sm:text-6xl">{title}</h1>
           <p className={`mt-3 text-lg ${quiet}`}>{byline(author)}</p>
+          {storyId && <IllustratorCredit storyId={storyId} className={`mt-1 text-lg ${quiet}`} />}
 
           {blocks.map(({ scene, layout }, sceneIndex) => {
               const figures = scene.illustrations.map((ill, i) => {
@@ -394,9 +400,9 @@ export function ReadingView({
                         multiply={!dark}
                         className="focus-visible:outline-4 focus-visible:outline-orange-500"
                       />
-                      <figcaption className={`mt-3 text-base ${quiet}`}>
-                        {ill.credit ? `Illustration: ${ill.credit}` : ill.alt}
-                      </figcaption>
+                      {/* No visible caption: the picture speaks for itself (its description is the alt
+                          text). Only a credit shows, as on the story page. */}
+                      {ill.credit && <figcaption className={`mt-3 text-base ${quiet}`}>Illustration: {ill.credit}</figcaption>}
                       {waiting && (
                         <div className="mt-4 flex flex-wrap gap-3">
                           <button
