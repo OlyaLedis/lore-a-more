@@ -56,7 +56,7 @@ export async function cleanStoryInput(
   ctx: MutationCtx,
   args: Infer<typeof storyInputObject>,
   // Who is writing, and the files this story already uses (empty for a new story).
-  owner: { userId: Id<"users">; storyFiles: Set<Id<"_storage">> },
+  owner: { userId: Id<"users">; storyFiles: Set<Id<"_storage">>; placeholderFile?: Id<"_storage"> },
 ) {
   const title = args.title.trim();
   const scenes = await cleanScenes(ctx, args.scenes);
@@ -318,6 +318,7 @@ export const update = mutation({
     const content = await cleanStoryInput(ctx, input, {
       userId: story.authorId,
       storyFiles: new Set([...filesOf(story), ...filesOf(existing)]),
+      placeholderFile: story.cover?.kind === "image" && story.cover.placeholder ? story.cover.storageId : undefined,
     });
     const newFiles = filesOf(content);
 
@@ -356,7 +357,6 @@ export const remove = mutation({
     const story = await requireOwnStory(ctx, id);
     const revision = await revisionFor(ctx, id);
     if (revision) await ctx.db.delete(revision._id);
-    await deleteUnusedFiles(ctx, new Set([...filesOf(story), ...filesOf(revision)]));
     await deleteByStory(ctx, "readingPositions", id);
     await deleteByStory(ctx, "savedStories", id);
     await deleteByStory(ctx, "storyViews", id);
@@ -365,6 +365,8 @@ export const remove = mutation({
     await deleteByStory(ctx, "characterStories", id);
     await deleteByStory(ctx, "storyIllustrators", id);
     await ctx.db.delete(id);
+    // Once the story is gone, so a placeholder tile it shared with other stories is kept for them only.
+    await deleteUnusedFiles(ctx, new Set([...filesOf(story), ...filesOf(revision)]));
   },
 });
 

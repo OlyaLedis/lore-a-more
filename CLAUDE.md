@@ -211,7 +211,11 @@ on the large featured cover. `stories.cover` is
 `{ kind: "image", storageId, alt, credit?, scale, x, y }` or `{ kind: "colors" }`. Stories without `cover`
 fall back to their first illustration (`cardCoverOf` in `convex/covers.ts`). `cleanCover` accepts a picture
 only if it's one of the story's own illustrations, already its cover, or an upload the author claimed via
-`covers.claimUpload` (`uploads` table). Cover files are counted by `filesOf`, so cleanup keeps them. Title, category and age, place, and optional
+`covers.claimUpload` (`uploads` table). Cover files are counted by `filesOf`, so cleanup keeps them. Placeholder tiles: until each story has a drawing of its own, stories without a picture borrow
+another story's tile (`covers:fillPlaceholders`, internal: in turn in the "New" list's order, never the same tile twice in a row or
+within 30 km, never the printed-book FPO pictures), marked `cover.placeholder: true` (kept through edits and re-imports) and
+pointing at the same file; `deleteUnusedFiles` keeps a file while any story's or edit's cover uses it (`by_coverStorageId`), and
+`legend-pictures.ts` replaces a placeholder with the story's own drawing. Title, category and age, place, and optional
 note each have a fixed height so rows align; the story page shows the full title and place.
 
 **Home layout.** Top Picks shows one `FeaturedStoryCard`. Recently Played, Places You've Been, Seasonal,

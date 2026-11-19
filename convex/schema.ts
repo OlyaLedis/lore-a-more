@@ -51,6 +51,10 @@ export const storyCover = v.union(
     storageId: v.id("_storage"),
     alt: v.string(),
     credit: v.optional(v.string()),
+    // A stand-in borrowed from another story's tile until this story has a drawing of its own
+    // (`covers:fillPlaceholders`). Several stories then share one file, which is why
+    // `deleteUnusedFiles` keeps a file while any story's cover still uses it.
+    placeholder: v.optional(v.boolean()),
     // 1 fits the whole picture inside the frame's margins.
     scale: v.number(),
     // Offsets as fractions of the frame's inner width/height, from -0.5 to 0.5.
@@ -127,7 +131,8 @@ export default defineSchema({
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["status", "category"] })
     .index("by_authorId", ["authorId"])
     .index("by_code", ["code"])
-    .index("by_importId", ["importId"]),
+    .index("by_importId", ["importId"])
+    .index("by_coverStorageId", ["cover.storageId"]),
   // An author's edit to an already-published story, waiting for review (or rejected). Readers keep
   // seeing the story's current fields until it's approved. At most one per story: editing again
   // replaces it. Edits to never-published stories change the story directly instead.
@@ -145,7 +150,8 @@ export default defineSchema({
     submittedAt: v.number(),
   })
     .index("by_storyId", ["storyId"])
-    .index("by_status_and_submittedAt", ["status", "submittedAt"]),
+    .index("by_status_and_submittedAt", ["status", "submittedAt"])
+    .index("by_coverStorageId", ["cover.storageId"]),
 
   // Per-reader history. Only ever read for the signed-in user; one row per reader and story.
   savedStories: defineTable({

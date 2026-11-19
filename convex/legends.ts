@@ -52,7 +52,11 @@ export const importLegends = internalMutation({
       const content = await cleanStoryInput(
         ctx,
         { ...kept, author: BYLINE },
-        { userId: authorId, storyFiles: before },
+        {
+          userId: authorId,
+          storyFiles: before,
+          placeholderFile: existing?.cover?.kind === "image" && existing.cover.placeholder ? existing.cover.storageId : undefined,
+        },
       );
       if (existing) {
         await ctx.db.patch("stories", existing._id, content);

@@ -96,6 +96,9 @@ export async function deleteUnusedFiles(
 ) {
   for (const id of before) {
     if (stillUsed.some((used) => used.has(id))) continue;
+    // Placeholder tiles share one file between stories: keep it while any story's cover uses it.
+    if (await ctx.db.query("stories").withIndex("by_coverStorageId", (q) => q.eq("cover.storageId", id)).first()) continue;
+    if (await ctx.db.query("storyRevisions").withIndex("by_coverStorageId", (q) => q.eq("cover.storageId", id)).first()) continue;
     if (await ctx.db.system.get("_storage", id)) await ctx.storage.delete(id);
     const claim = await ctx.db
       .query("uploads")
